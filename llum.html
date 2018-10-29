@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+	<title>Estacions de l'any</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>
+		body {
+			background-color: #131313;
+			margin: 0 0 0 0;
+			padding: 0 0 0 0;
+			border: none;
+			cursor: default;
+			overflow: hidden;
+		}
+		#container {
+			height: 100%;
+			width: 100%;
+			display: flex;
+		}
+		#content1 {
+			width: 25%;
+		}
+		#content {
+			border-left: thick solid #ffffff;
+			width: 50%;
+		}
+		#content2 {
+			border-left: thick solid #ffffff;
+			width: 25%;
+		}
+		#info {
+			position: absolute;
+			width: 50% ;
+			top: 20px;
+			font-family: "Arial";
+			font-size: 22pt;
+			text-align: center;
+			color: white;
+			z-index: 100;
+			display: block;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="container">
+		<div id="dat"></div>
+		<div id="content1">
+		</div>
+		<div id="content">
+			<div id="info">Carregant ...</div>
+		</div>
+		<div id="content2">
+		</div>
+	</div>
+	<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+
+	<script src="../three.js/build/three.min.js"></script>
+	<script src="../three.js/examples/js/renderers/Projector.js"></script>
+	<script src="../three.js/examples/js/renderers/CanvasRenderer.js"></script>
+	<script src="../three.js/examples/js/libs/dat.gui.min.js"></script>
+	<script src="../three.js/examples/js/controls/OrbitControls.js"></script>
+	<script src="../three.js/examples/js/loaders/OBJLoader.js"></script>
+	<script src="../three.js/examples/js/Detector.js"></script>
+
+	<script>
+		var container, camera, camera2D, camera1, cameraOrtho, scene, sceneOrtho, scene2D, scene1, renderer1, renderer, renderer2D;
+		var meshTerra, mapa2D, mapa2Dtemperatura, mapa2Dpanell, solet, terreta;
+		var omegaSat, arrowTerreta0, arrowTerreta;
+		var geometrySol, lineSol, positionsSol, geometrySolSegment, lineSolSegment, positionsSolSegment;
+		var grupMon;
+		var folder2;
+		var quaternionTerra;
+		var gui;
+		var directionalLight;
+		var diaActual;
+		var diaAnterior;
+		var anyActual;
+		var cursorDia;
+		var cercleEquador;
+		var cercleTropic1;
+		var cercleTropic2;
+		var cerclePolar1;
+		var cerclePolar2;
+		// CONSTANTS TERRA            
+		const MU = 398694790080000; // G * massa de la Terra, S.I.
+		const rTerra = 6458428; // radi de l'esfera terrestre, metres
+		const segonsDia = 23 * 3600 + 56 * 60 + 4; // nombre de segons que té un dia
+		const omega = 2 * Math.PI / segonsDia; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
+		const angleTerra = 23.4369 * Math.PI / 180; // angle d'inclinació de l'eix terrestre, rad
+		const omegaSol = omega / 365.256363; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
+		// CONSTANTS SIMULACIÓ
+		const centreX = 0; // origen en X del mapa 2D de la Terra
+		const centreY = 0; // origen en Y del mapa 2D de la Terra
+		const mAmplada = 1.3; // amplada del mapa 2D de la Terra
+		const mAlsada = mAmplada / 2; // alçada del mapa 2D de la Terra
+		const shiftZ = 0.01; // distància entre objectes en la coordenada Z en l'escena 2D.
+		const ampleLeft = 0.25;
+		const ample = 0.5;
+		const ampleRight = 0.25;
+		// VARIABLES DE SIMULACIÓ	
+		var ambWebgl;
+		var temps, previousTime, interval; // en segons
+		var enPausa = true; // animació
+		var enTranslacio = false; // Translació
+		var ambLlum = true; // fora de la zona d'ombra
+		var vectorLlum; // vector amb origen al Sol i final a la Terra (unitari)
+		var botoIniciar;
+		var estil;
+		var folder1, folder3;
+		var diesMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+		var primerDia = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+		var canviDiaAutomatic = false;
+		var nomDelMes = ["de gener", "de febrer", "de març", "d'abril", "de maig", "de juny", "de juliol", "d'agost", "de setembre", "d'octubre", "de novembre", "de desembre"];
+		var numRaigs = 5;
+		var ecliptica, equatorial;
+		var panells;
+
+		init();
+		function initGUI() {			
+			gui = new dat.GUI({ width: 300 });
+			folder1 = gui.addFolder("DATA");
+			folder1.add(parametres, "mesDelAny", { Gener    : 1, Febrer: 2, Març: 3, Abril: 4, Maig: 5, Juny: 6, Juliol: 7, Agost: 8, Setembre: 9, Octubre: 10, Novembre: 11, Desembre: 12 }).name("Mes").onChange(escullMes);;
+			cursorDia = folder1.add(parametres, "diaDelMes", 1, 31, 1).name("Dia del mes").onChange(escullDia);			
+			folder2 = gui.addFolder("VISUALITZACIÓ");
+			folder2.add(parametres, "paralels").name("Paral·lels terrestres").onChange(enParalels);
+			folder2.add(parametres, "plans").name("Plans de referència").onChange(enPlans);
+			folder2.add(parametres, "incidencia").name("Incidència solar").onChange(enIncidencia);
+			folder3 = gui.addFolder('SIMULACIO');
+			folder3.add(parametres, "translacio", { "Rotació de la Terra": false,"Translació de la Terra":true}).name("Moviment").onChange(botoTranslacio);;
+			//folder3.add(parametres, "velAnimacio", 1, 10, 1).name("Velocitat animació");
+			botoIniciar = folder3.add(parametres, "pausa");
+			botoIniciar.name("I N I C I A R");
+			estil = botoIniciar.domElement.previousSibling.style;
+			estil.backgroundColor = 'green';
+			estil.textAlign = 'center';
+			estil.width = '100%';
+			folder1.open();
+			folder2.open();
+			folder3.open();
+		}
+
+		function init() {
+			// PARÀMETRES DE SIMULACIÓ
+			parametres = {
+				mapa3D: 'atlas1.jpg', // fitxer de textura del mapa
+				velAnimacio: 5, // velocitat de l'animació
+				pausa: botoPausa, // botó per pausar o reprendre la simulació
+				translacio: false,
+				paralels: true,
+				plans: true,
+				incidencia: true,
+				diaDelMes: 1,
+				mesDelAny: 1
+			};
+			container2 = document.getElementById('content2');
+			container1 = document.getElementById('content1');
+			container = document.getElementById('content');
+
+			// CÀMERA
+			camera1 = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+			camera1.position.x = 3.5;
+			camera1.position.y = -1;
+			camera1.position.z = 1;
+			camera1.up.set(0, 0, 1);
+			camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+			camera.up.set(0, 0, 1); //Math.sin(angleTerra),Math.cos(angleTerra));
+			camera.position.x = 3; // red
+			camera.position.y = 3; // green
+			camera.position.z = 0.2; // blue
+			camera2D = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 4, 5);
+			camera2D.position.z = 4.5;
+			var width = window.innerWidth / 2;
+			var height = window.innerHeight / 2;
+			cameraOrtho = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+			cameraOrtho.position.x = 3.5;
+			cameraOrtho.position.y = -1;
+			cameraOrtho.position.z = 1;
+			cameraOrtho.up.set(0, 0, 1);
+			sceneOrtho = new THREE.Scene();
+			scene1 = new THREE.Scene(); // per al conjunt Sol-Terra
+			scene1.background = new THREE.Color(0x131313);
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x131313);
+			scene2D = new THREE.Scene();
+			scene2D.background = new THREE.Color(0x131313);
+
+			// LLUM
+			var ambientLight = new THREE.AmbientLight(0x111111);
+			scene.add(ambientLight);
+			directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+			vectorLlum = new THREE.Vector3(0, -1, 0);
+			directionalLight.position.set(-vectorLlum.x, -vectorLlum.y, -vectorLlum.z);
+			directionalLight.castShadow = true;
+			scene.add(directionalLight);
+			grupMon = new THREE.Group();
+
+			// EIX TERRA
+			var dir = new THREE.Vector3(0, Math.sin(angleTerra), Math.cos(angleTerra));
+			var origin = new THREE.Vector3(0, -1.5 * Math.sin(angleTerra), -1.5 * Math.cos(angleTerra));
+			var arrowHelper = new THREE.ArrowHelper(dir, origin, 3, 0xffffff, 0.15, 0.05);
+			scene.add(arrowHelper);
+
+			// DIRECCIÓ SOL				
+			geometrySol = [];
+			positionsSol = [];
+			lineSol = [];
+			var materialSol = new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.05, gapSize: 0.02 });
+			for (i = 0; i < numRaigs; i++) {
+				geometrySol[i] = new THREE.BufferGeometry();
+				positionsSol[i] = new Float32Array(2 * 3);
+				geometrySol[i].addAttribute('position', new THREE.BufferAttribute(positionsSol[i], 3));
+				lineSol[i] = new THREE.Line(geometrySol[i], materialSol);
+				lineSol[i].frustumCulled = false;
+				scene.add(lineSol[i]);
+			}
+			geometrySolSegment = new THREE.BufferGeometry();
+			positionsSolSegment = new Float32Array(2 * 3);
+			geometrySolSegment.addAttribute('position', new THREE.BufferAttribute(positionsSolSegment, 3));
+			lineSolSegment = new THREE.Line(geometrySolSegment, materialSol);
+			lineSolSegment.frustumCulled = false;
+			scene1.add(lineSolSegment);
+
+			// ECLÍPTICA
+			var geometryEcliptica = new THREE.CircleGeometry(2, 64);
+			var materialEcliptica = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.05, side: THREE.DoubleSide });
+			ecliptica = new THREE.Mesh(geometryEcliptica, materialEcliptica);
+			scene.add(ecliptica);
+
+			// PLA EQUATORIAL
+			var geometryEquatorial = new THREE.CircleGeometry(2, 64);
+			var materialEquatorial = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.05, side: THREE.DoubleSide });
+			equatorial = new THREE.Mesh(geometryEquatorial, materialEquatorial);
+			equatorial.rotation.x = -angleTerra;
+			scene.add(equatorial);
+
+			// TERRA I MAPA 2D
+			canviaMapa();
+			
+			// SOL SISTEMA
+			var materialSolet = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+			var geometrySolet = new THREE.SphereGeometry(0.06);
+			solet = new THREE.Mesh(geometrySolet, materialSolet);
+			scene1.add(solet);
+
+			// TERRA SISTEMA
+			var materialTerreta = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+			var geometryTerreta = new THREE.SphereGeometry(0.04);
+			terreta = new THREE.Mesh(geometryTerreta, materialTerreta);
+			terreta.position.y = 1;
+			scene1.add(terreta);
+
+			// PUNTS DE REFERÈNCIA
+			var geometryRef = new THREE.SphereGeometry(0.02);
+			var materialSolsHivern = new THREE.MeshBasicMaterial({ color: 0x0088cc });
+			var materialEquinPrimavera = new THREE.MeshBasicMaterial({ color: 0x66ff66 });
+			var materialSolsEstiu = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+			var materialEquinTardor = new THREE.MeshBasicMaterial({ color: 0x994d00 });
+			var solsHivern = new THREE.Mesh(geometryRef, materialSolsHivern);
+			solsHivern.position.x = 1.8069730093789343e-14;
+			solsHivern.position.y = 1;
+			scene1.add(solsHivern);
+			var equinPrimavera = new THREE.Mesh(geometryRef, materialEquinPrimavera);
+			equinPrimavera.position.x = -0.9999907397361901;
+			equinPrimavera.position.y = 0.004303538296249456;
+			scene1.add(equinPrimavera);
+			var solsEstiu = new THREE.Mesh(geometryRef, materialSolsEstiu);
+			solsEstiu.position.x = -0.025818440227139357;
+			solsEstiu.position.y = -0.999666648510511;
+			scene1.add(solsEstiu);
+			var equinTardor = new THREE.Mesh(geometryRef, materialEquinTardor);
+			equinTardor.position.x = 0.9999166586547377;
+			equinTardor.position.y = -0.012910296075027554;
+			scene1.add(equinTardor);
+
+			// EIX TERRA SISTEMA
+			arrowTerreta = new THREE.ArrowHelper(dir, origin, 0.2, 0xffffff, 0.1, 0.04);
+			scene1.add(arrowTerreta);
+			dir = new THREE.Vector3(0, -Math.sin(angleTerra), -Math.cos(angleTerra));
+			arrowTerreta0 = new THREE.ArrowHelper(dir, origin, 0.2, 0xffffff, 0, 0);
+			scene1.add(arrowTerreta0);			
+
+			// ÒRBITA TERRA
+			var radius = 1;
+			var segments = 64;
+			var materialOrbT = new THREE.LineBasicMaterial({ color: 0xffffff });
+			var geometryOrbT = new THREE.CircleGeometry(radius, segments);
+			geometryOrbT.vertices.shift();
+			scene1.add(new THREE.LineLoop(geometryOrbT, materialOrbT));
+
+			// TÍTOL TERMIC
+			var loader = new THREE.TextureLoader();
+			loader.load('imatges/' + "termic_blanc.png", function (texture) {
+				var geometryPanell = new THREE.PlaneGeometry(2200 / 2000, 176 / 2000);
+				var materialPanell = new THREE.MeshBasicMaterial({ map: texture });
+				panell = new THREE.Mesh(geometryPanell, materialPanell);
+				panell.position.y = centreY + 1;
+				panell.position.z = shiftZ;
+				scene2D.add(panell);
+			});
+
+			// ÍNDEX TERMIC
+			var loader = new THREE.TextureLoader();
+			loader.load('imatges/' + "mapes_termics/Index_temperatura.png", function (texture) {
+				var geometryPanell = new THREE.PlaneGeometry(200 / 150, 35 / 150);
+				var materialPanell = new THREE.MeshBasicMaterial({ map: texture });
+				panell = new THREE.Mesh(geometryPanell, materialPanell);
+				panell.position.y = centreY + 0.8;
+				panell.position.z = shiftZ;
+				scene2D.add(panell);
+			});
+
+			// TÍTOL TEMPERATURA MAR
+			var loader = new THREE.TextureLoader();
+			loader.load('imatges/' + "temp_mar_blanc.png", function (texture) {
+				var geometryPanell = new THREE.PlaneGeometry(2200 / 2000, 176 / 2000);
+				var materialPanell = new THREE.MeshBasicMaterial({ map: texture });
+				panell = new THREE.Mesh(geometryPanell, materialPanell);
+				panell.position.y = centreY - 0.56;
+				panell.position.z = shiftZ;
+				scene2D.add(panell);
+			});
+
+			// TÍTOL ALBEDO
+			var loader = new THREE.TextureLoader();
+			loader.load('imatges/' + "albedo_blanc.png", function (texture) {
+				var geometryPanell = new THREE.PlaneGeometry(2200 / 2000, 176 / 2000);
+				var materialPanell = new THREE.MeshBasicMaterial({ map: texture });
+				panell = new THREE.Mesh(geometryPanell, materialPanell);
+				panell.position.y = centreY - 2.17;
+				panell.position.z = shiftZ;
+				scene2D.add(panell);
+			});
+			
+			// LLEGENDA ESTACIONS
+			var loader = new THREE.TextureLoader();
+			loader.load( 'imatges/'+"estacions.png", function ( texture ) {
+				var geometryPanell = new THREE.PlaneGeometry(5,0.7);
+				var materialPanell = new THREE.MeshBasicMaterial( {map: texture} );
+				panell = new THREE.Mesh( geometryPanell, materialPanell);
+				panell.position.x=4.3;
+				panell.position.y=-2.3;
+				panell.position.z=-2.1;
+				sceneOrtho.add( panell );
+			} );
+
+			// MÓN
+			grupMon.setRotationFromAxisAngle(new THREE.Vector3(1, 0, 0), -angleTerra);
+			scene.add(grupMon);
+
+			// TERRA
+			var loader3D = new THREE.TextureLoader();
+			loader3D.load('imatges/' + parametres.mapa3D, function (texture) {
+				grupMon.remove(meshTerra);
+				var geometryTerra = new THREE.SphereGeometry(1, 60, 60);
+				geometryTerra.rotateX(Math.PI / 2);
+				var materialTerra = new THREE.MeshLambertMaterial({ map: texture, overdraw: true });
+				meshTerra = new THREE.Mesh(geometryTerra, materialTerra);
+				meshTerra.castShadow = true;
+				grupMon.add(meshTerra);
+			});
+
+			// PARAL·LELS
+			var radius = 1;
+			var segments = 64;
+			// Equador
+			var materialPara = new THREE.LineBasicMaterial({ color: 0xff0000 });
+			var geometryPara = new THREE.CircleGeometry(radius, segments);
+			geometryPara.vertices.shift();
+			cercleEquador = new THREE.LineLoop(geometryPara, materialPara)
+			grupMon.add(cercleEquador);
+			// Tròpics
+			var materialTropic = new THREE.LineBasicMaterial({ color: 0xff6600 });
+			var geometryTropic = new THREE.CircleGeometry(radius * Math.cos(angleTerra), segments);
+			geometryTropic.vertices.shift();
+			cercleTropic1 = new THREE.LineLoop(geometryTropic, materialTropic);
+			cercleTropic1.position.z = Math.sin(angleTerra);
+			grupMon.add(cercleTropic1);
+			cercleTropic2 = new THREE.LineLoop(geometryTropic, materialTropic);
+			cercleTropic2.position.z = -Math.sin(angleTerra);
+			grupMon.add(cercleTropic2);
+			// Cercles polars
+			var materialCercle = new THREE.LineBasicMaterial({ color: 0x80d4ff });
+			var geometryCercle = new THREE.CircleGeometry(radius * Math.sin(angleTerra), segments);
+			geometryCercle.vertices.shift();
+			cerclePolar1 = new THREE.LineLoop(geometryCercle, materialCercle);
+			cerclePolar1.position.z = Math.cos(angleTerra);
+			grupMon.add(cerclePolar1);
+			cerclePolar2 = new THREE.LineLoop(geometryCercle, materialCercle);
+			cerclePolar2.position.z = -Math.cos(angleTerra);
+			grupMon.add(cerclePolar2);
+
+			// RENDERER
+			if (Detector.webgl) {
+				ambWebgl = true;
+				renderer = new THREE.WebGLRenderer();
+				renderer1 = new THREE.WebGLRenderer();
+				renderer2D = new THREE.WebGLRenderer();
+			} else {
+				ambWebgl = false;
+				renderer = new THREE.CanvasRenderer();
+				renderer1 = new THREE.CanvasRenderer();
+				renderer2D = new THREE.CanvasRenderer();
+				console.log("WebGL no és compatible, renderitzant amb CanvasRenderer.");
+				alert("Aquest navegador no és compatible amb WebGL,\nalgunes funcionalitats del simulador no estaran disponibles.");
+			}
+			renderer1.setSize(window.innerWidth * ampleLeft, window.innerHeight);
+			renderer1.autoClear = false; // To allow render overlay on top of sprited sphere
+			renderer.setSize(window.innerWidth * ample, window.innerHeight);
+			renderer2D.setSize(window.innerWidth * ampleRight, window.innerHeight);
+			container2.appendChild(renderer1.domElement);
+			container.appendChild(renderer.domElement);
+			container1.appendChild(renderer2D.domElement);
+			controls1 = new THREE.OrbitControls(camera1, renderer1.domElement);
+			controls = new THREE.OrbitControls(camera, renderer.domElement);
+			window.addEventListener('resize', onWindowResize, false);
+			window.addEventListener('focus', onFocus, false);
+			initGUI();
+			canviaParametres();
+			animate();
+		}
+		function onFocus() {
+			canviaParametres();
+		}
+		function canviaDia() {
+			scene.remove(directionalLight);
+			//var angleSol=-2*Math.PI*(diaActual+9)/365-Math.PI/2;
+			if (diaActual < 266) {
+				var angleSol = -0.0168399844444956 * diaActual - 1.79009034644988;
+			} else {
+				var angleSol = -0.017794460466693 * diaActual - 1.53694816829845;
+			}
+			vectorLlum = new THREE.Vector3(Math.cos(angleSol), -Math.sin(angleSol), 0);
+			directionalLight.position.set(-vectorLlum.x, -vectorLlum.y, -vectorLlum.z);
+			directionalLight.castShadow = true;
+			scene.add(directionalLight);
+			for (i = 0; i < numRaigs; i++) {
+				/*positionsSol[i][0] = 0;
+				positionsSol[i][1] = 0;
+				positionsSol[i][2] = Math.sin(angleTerra*(1+Math.cos(angleSol+7.85398163397448)));
+				positionsSol[i][3] = -3 * vectorLlum.x;
+				positionsSol[i][4] = -3 * vectorLlum.y;
+				positionsSol[i][5] = Math.sin(angleTerra*(1+Math.cos(angleSol+7.85398163397448)));*/
+				positionsSol[i][0] = 0;
+				positionsSol[i][1] = 0;
+				positionsSol[i][2] = -1 + 2 * i / (numRaigs - 1);
+				positionsSol[i][3] = -3 * vectorLlum.x;
+				positionsSol[i][4] = -3 * vectorLlum.y;
+				positionsSol[i][5] = -1 + 2 * i / (numRaigs - 1);
+			}
+			terreta.position.x = vectorLlum.x;
+			terreta.position.y = vectorLlum.y;
+			terreta.position.z = vectorLlum.z;
+			arrowTerreta0.position.x = terreta.position.x;
+			arrowTerreta0.position.y = terreta.position.y;
+			arrowTerreta0.position.z = terreta.position.z;
+			arrowTerreta.position.x = terreta.position.x;
+			arrowTerreta.position.y = terreta.position.y;
+			arrowTerreta.position.z = terreta.position.z;
+			positionsSolSegment[3] = vectorLlum.x;
+			positionsSolSegment[4] = vectorLlum.y;
+			positionsSolSegment[5] = vectorLlum.z;
+			for (i = 0; i < numRaigs; i++) {
+				lineSol[i].geometry.attributes.position.needsUpdate = true;
+				lineSol[i].computeLineDistances();
+			}
+			lineSolSegment.geometry.attributes.position.needsUpdate = true;
+			lineSolSegment.computeLineDistances();
+		}
+
+		function escullDia() {
+			if (!canviDiaAutomatic) {
+				diaActual = primerDia[parametres.mesDelAny - 1] + parametres.diaDelMes - 1;
+			}
+			var textDia = parametres.diaDelMes + " " + nomDelMes[parametres.mesDelAny - 1];
+			$("#info").text(textDia);
+			temps = (diaActual - 1) * segonsDia;
+			anyActual = 0;
+			canviaDia();
+		}
+
+		function escullMes() {
+			cursorDia.__max = diesMes[parametres.mesDelAny - 1];
+			parametres.diaDelMes = 1;
+			diaActual = primerDia[parametres.mesDelAny - 1];
+			temps = (diaActual - 1) * segonsDia;
+			//folder1.updateDisplay();
+			var textDia = parametres.diaDelMes + " " + nomDelMes[parametres.mesDelAny - 1];
+			$("#info").text(textDia);
+			canviaMapa();
+			canviaDia();
+		}
+
+		function botoPausa() {
+			enPausa = !enPausa;
+			if (!enPausa) {
+				estil.backgroundColor = 'IndianRed';
+				botoIniciar.name("P A U S A R");
+				previousTime = new Date().getTime();
+				animate();
+			} else {
+				estil.backgroundColor = 'green';
+				botoIniciar.name("C O N T I N U A R");
+			}
+		}
+		function botoTranslacio() {
+			enTranslacio = !enTranslacio;
+		}
+
+		function enParalels() {
+			if (parametres.paralels == false) {
+				grupMon.remove(cercleEquador);
+				grupMon.remove(cercleTropic1);
+				grupMon.remove(cercleTropic2);
+				grupMon.remove(cerclePolar1);
+				grupMon.remove(cerclePolar2);
+			} else {
+				grupMon.add(cercleEquador);
+				grupMon.add(cercleTropic1);
+				grupMon.add(cercleTropic2);
+				grupMon.add(cerclePolar1);
+				grupMon.add(cerclePolar2);
+			}
+		}
+		function enPlans() {
+			if (parametres.plans == false) {
+				scene.remove(equatorial);
+				scene.remove(ecliptica);
+			} else {
+				scene.add(equatorial);
+				scene.add(ecliptica);
+			}
+		}
+		function enIncidencia() {
+			if (parametres.incidencia == false) {
+				for (i = 0; i < numRaigs; i++) {
+					scene.remove(lineSol[i]);
+				}
+			} else {
+				for (i = 0; i < numRaigs; i++) {
+					scene.add(lineSol[i]);
+				}
+			}
+		}
+
+		function canviaParametres() {
+			previousTime = new Date().getTime();
+			temps = 0;
+			diaActual = 0;
+			diaAnterior = diaActual;
+			var mesActual = 1;
+			folder1.updateDisplay();
+			anyActual = 0;
+			diaSencer = false;
+		}
+		function onWindowResize() {
+			renderer1.setSize(window.innerWidth * ampleLeft, window.innerHeight);
+			renderer.setSize(window.innerWidth * ample, window.innerHeight);
+			renderer2D.setSize(window.innerWidth * ampleRight, window.innerHeight);
+		}
+		function animate() {
+			requestAnimationFrame(animate);
+			render();
+		}
+
+		function render() {
+			if (!enPausa) {
+				var currentTime = new Date().getTime();
+				interval = currentTime - previousTime;
+				if (enTranslacio) {
+					temps += segonsDia / 10 * parametres.velAnimacio;
+				} else {
+					temps += parametres.velAnimacio * interval;
+				}
+				previousTime = currentTime;
+			}
+			diaActual = Math.floor(temps / segonsDia) - anyActual * 365 + 1;
+			if (diaActual > 365) {
+				diaActual = 1;
+				anyActual++;
+				console.log("Any " + anyActual);
+			}
+
+			if (diaActual != diaAnterior) {
+				console.log(diaActual);
+				diaAnterior = diaActual;
+				var mesActual = 1;
+				while (diaActual > primerDia[mesActual] - 1) {
+					mesActual++;
+				}
+				canviDiaAutomatic = true;
+				parametres.mesDelAny = mesActual;
+				parametres.diaDelMes = diaActual - primerDia[parametres.mesDelAny - 1] + 1;
+				folder1.updateDisplay();
+				canviaMapa();
+				canviDiaAutomatic = false;
+				canviaDia();
+				var textDia = parametres.diaDelMes + " " + nomDelMes[parametres.mesDelAny - 1];
+				$("#info").text(textDia);
+			}
+			if (meshTerra != null) {
+				var quaternionZ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), omega * temps);
+				meshTerra.quaternion.copy(quaternionZ);
+			}
+
+			camera1.aspect = window.innerWidth / window.innerHeight * ampleLeft;
+			camera.aspect = window.innerWidth / window.innerHeight * ample;
+			camera2D.aspect = window.innerWidth / window.innerHeight * ampleRight;
+			camera1.updateProjectionMatrix();
+			camera1.lookAt(new THREE.Vector3(0, 0, 0.1));
+			renderer1.clear();
+			renderer1.render(scene1, camera1);
+			renderer1.clearDepth();
+			renderer1.render(sceneOrtho, cameraOrtho);
+			camera.updateProjectionMatrix();
+			renderer.render(scene, camera);
+			camera2D.updateProjectionMatrix();
+			renderer2D.render(scene2D, camera2D);
+		}
+
+		function canviaMapa() {
+			var loader1 = new THREE.TextureLoader();
+			loader1.load('imatges/mapes_termics/Mapa_termic_' + parametres.mesDelAny + '.jpeg', function (texture) {
+				// MAPA 2D Tèrmic
+				scene2D.remove(mapa2Dtemperatura);
+				var geometryMapa2D = new THREE.PlaneGeometry(2 * mAmplada, 2 * mAlsada);
+				var materialMapa2D = new THREE.MeshBasicMaterial({ map: texture, overdraw: true });
+				mapa2Dtemperatura = new THREE.Mesh(geometryMapa2D, materialMapa2D);
+				mapa2Dtemperatura.position.x = centreX;
+				mapa2Dtemperatura.position.y = centreY + 1.6;
+				scene2D.add(mapa2Dtemperatura);
+			});
+			var loader2 = new THREE.TextureLoader();
+			loader2.load('imatges/mapes_temp_mar/mapa_temp_mar_' + parametres.mesDelAny + '.jpeg', function (texture) {
+				// MAPA 2D Temperatura del mar
+				scene2D.remove(mapa2D);
+				var geometryMapa2D = new THREE.PlaneGeometry(2 * mAmplada, 2 * mAlsada);
+				var materialMapa2D = new THREE.MeshBasicMaterial({ map: texture, overdraw: true });
+				mapa2D = new THREE.Mesh(geometryMapa2D, materialMapa2D);
+				mapa2D.position.x = centreX;
+				mapa2D.position.y = centreY;
+				scene2D.add(mapa2D);
+			});
+			var loader3 = new THREE.TextureLoader();
+			loader3.load('imatges/mapes_albedo/mapa_albedo_' + parametres.mesDelAny + '.jpeg', function (texture) {
+				// MAPA 2D Albedo
+				scene2D.remove(mapa2Dpanell);
+				var geometryMapa2D = new THREE.PlaneGeometry(2 * mAmplada, 2 * mAlsada);
+				var materialMapa2D = new THREE.MeshBasicMaterial({ map: texture, overdraw: true });
+				mapa2Dpanell = new THREE.Mesh(geometryMapa2D, materialMapa2D);
+				mapa2Dpanell.position.x = centreX;
+				mapa2Dpanell.position.y = centreY - 1.6;
+				scene2D.add(mapa2Dpanell);
+			});
+		}	
+	</script>
+</body>
+
+</html>
