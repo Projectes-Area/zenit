@@ -41,6 +41,9 @@
 			z-index: 100;
 			display: block;
 		}
+		#dat {
+			user-select: none; position: absolute; right: 0; top: 0; z-Index: 200;
+		}
 	</style>
 </head>
 
@@ -71,19 +74,13 @@
 		var omegaSat, arrowTerreta0, arrowTerreta;
 		var geometrySol, lineSol, positionsSol, geometrySolSegment, lineSolSegment, positionsSolSegment;
 		var grupMon;
-		var folder2;
+		var folder1,folder2,folder3;
 		var quaternionTerra;
 		var gui;
 		var directionalLight;
-		var diaActual;
-		var diaAnterior;
-		var anyActual;
+		var diaActual,diaAnterior,anyActual;
 		var cursorDia;
-		var cercleEquador;
-		var cercleTropic1;
-		var cercleTropic2;
-		var cerclePolar1;
-		var cerclePolar2;
+		var cercleEquador,cercleTropic1,cercleTropic2,cerclePolar1,cerclePolar2;
 		// CONSTANTS TERRA            
 		const MU = 398694790080000; // G * massa de la Terra, S.I.
 		const rTerra = 6458428; // radi de l'esfera terrestre, metres
@@ -109,7 +106,6 @@
 		var vectorLlum; // vector amb origen al Sol i final a la Terra (unitari)
 		var botoIniciar;
 		var estil;
-		var folder1, folder3;
 		var diesMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 		var primerDia = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
 		var canviDiaAutomatic = false;
@@ -119,8 +115,11 @@
 		var panells;
 
 		init();
-		function initGUI() {			
-			gui = new dat.GUI({ width: 300 });
+		function initGUI() {	
+			let gui = new dat.GUI({ autoPlace: false });		
+			gui = new dat.GUI({ autoPlace: false,width: 300 });
+			var GUIContainer = document.getElementById('dat');
+			GUIContainer.appendChild(gui.domElement);
 			folder1 = gui.addFolder("DATA");
 			folder1.add(parametres, "mesDelAny", { Gener    : 1, Febrer: 2, Març: 3, Abril: 4, Maig: 5, Juny: 6, Juliol: 7, Agost: 8, Setembre: 9, Octubre: 10, Novembre: 11, Desembre: 12 }).name("Mes").onChange(escullMes);;
 			cursorDia = folder1.add(parametres, "diaDelMes", 1, 31, 1).name("Dia del mes").onChange(escullDia);			
@@ -208,11 +207,16 @@
 			positionsSol = [];
 			lineSol = [];
 			var materialSol = new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.05, gapSize: 0.02 });
+			var materialSolEquador = new THREE.LineDashedMaterial({ color: 0xff0000, dashSize: 0.05, gapSize: 0.02 });
 			for (i = 0; i < numRaigs; i++) {
 				geometrySol[i] = new THREE.BufferGeometry();
 				positionsSol[i] = new Float32Array(2 * 3);
 				geometrySol[i].addAttribute('position', new THREE.BufferAttribute(positionsSol[i], 3));
-				lineSol[i] = new THREE.Line(geometrySol[i], materialSol);
+				if(i==2) {
+					lineSol[i] = new THREE.Line(geometrySol[i], materialSolEquador);
+				} else {
+					lineSol[i] = new THREE.Line(geometrySol[i], materialSol);
+				}
 				lineSol[i].frustumCulled = false;
 				scene.add(lineSol[i]);
 			}
@@ -437,19 +441,16 @@
 			directionalLight.castShadow = true;
 			scene.add(directionalLight);
 			for (i = 0; i < numRaigs; i++) {
-				/*positionsSol[i][0] = 0;
-				positionsSol[i][1] = 0;
-				positionsSol[i][2] = Math.sin(angleTerra*(1+Math.cos(angleSol+7.85398163397448)));
-				positionsSol[i][3] = -3 * vectorLlum.x;
-				positionsSol[i][4] = -3 * vectorLlum.y;
-				positionsSol[i][5] = Math.sin(angleTerra*(1+Math.cos(angleSol+7.85398163397448)));*/
-				positionsSol[i][0] = 0;
-				positionsSol[i][1] = 0;
 				positionsSol[i][2] = -1 + 2 * i / (numRaigs - 1);
 				positionsSol[i][3] = -3 * vectorLlum.x;
 				positionsSol[i][4] = -3 * vectorLlum.y;
 				positionsSol[i][5] = -1 + 2 * i / (numRaigs - 1);
 			}
+			positionsSol[1][2] = -Math.sin(angleTerra)-0.04;
+			positionsSol[1][5] = -Math.sin(angleTerra)-0.04;
+			positionsSol[3][2] = Math.sin(angleTerra)+0.04;
+			positionsSol[3][5] = Math.sin(angleTerra)+0.04;
+
 			terreta.position.x = vectorLlum.x;
 			terreta.position.y = vectorLlum.y;
 			terreta.position.z = vectorLlum.z;
@@ -486,7 +487,7 @@
 			parametres.diaDelMes = 1;
 			diaActual = primerDia[parametres.mesDelAny - 1];
 			temps = (diaActual - 1) * segonsDia;
-			//folder1.updateDisplay();
+			folder1.updateDisplay();
 			var textDia = parametres.diaDelMes + " " + nomDelMes[parametres.mesDelAny - 1];
 			$("#info").text(textDia);
 			canviaMapa();
