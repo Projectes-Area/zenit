@@ -7,9 +7,22 @@
 		<style>
 			body {
 				background-color: #000;	margin: 0 0 0 0; padding: 0 0 0 0; border: none; cursor: default;
+				margin: 0 0 0 0;
+				padding: 0 0 0 0;
+				border: none;
+				cursor: default;
+				overflow: hidden;
 			}
 			#container {
-				width: 100%; height: 100vh;	min-width: 640px; min-height: 360px; position: relative; overflow: hidden; z-index: 0;
+				height: 100%;
+				width: 100%;
+				display: flex;
+			}
+			#content {
+				width: 50%;
+			}
+			#content2 {
+				width: 50%;
 			}
 			#dat {
 				user-select: none; position: absolute; left: 0;	top: 0;	z-Index: 200;
@@ -29,23 +42,35 @@
 			} 
 			.dg .c div {
 				box-sizing: content-box;                                                             
+			}
+			.center {
+				display: block;
+				margin-left: auto;
+				margin-right: auto;
 			}		
 		</style>
 	</head>
 	<body>		
 		
-		<div id="container"></div>
-		<div id="dat"></div>
-		<div style="height: 300px">
+		<div id="container">
+			<div id="dat"></div>
+			<div id="content">
+			</div>
+			<div id="content2">
+			</div>
+		</div>
+		
+		 <div style="height: 300px; visibility: hidden">
 			<canvas id="cnvSil" width=512 height=256></canvas>
 			<canvas id="cnvFis" width=512 height=256></canvas>
 		</div>
-		<div style="clear:both">
+		<!--
+		<div style="clear:both; visibility: hidden">
 			<button type="button" onclick="llenSat()">Inici captura</button> 
-		</div>
+		</div>-->
 
-		<!-- Modal -->
-		<div id="finestraInfo" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" width='90%'>
+
+		<div id="finestraInfo" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" width='90%' style="visibility: hidden">
 			<div class="modal-dialog">
 				<div class="modal-header">
 					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -58,7 +83,21 @@
 					<button class="btn" data-dismiss="modal" aria-hidden="true">Tancar</button>
 				</div>
 			</div>
-		</div>
+		</div> 
+
+		<div id="finestraExploracio" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" width='90%' style="visibility: hidden">
+			<div class="modal-dialog">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+					<h3 id="modalHeader">Exploració de la zona</h3>
+				</div>
+				<div class="modal-body" id="missatgeExploracio">					
+				</div>
+				<div class="modal-footer">
+					<button class="btn" data-dismiss="modal" aria-hidden="true">Tancar</button>
+				</div>
+			</div>
+		</div> 
 
 		<script src="https://code.jquery.com/jquery-1.12.4.js"></script>     
 
@@ -80,33 +119,36 @@
 		<script src="../three.js/examples/js/loaders/OBJLoader.js"></script>
 		<script src="../three.js/examples/js/Detector.js"></script>
 
+		<script src="pixi.min.js"></script>
+
 		<script>
-			var container, camera, camera2D, scene, scene2D, renderer;
-			var meshTerra, llegenda, discs, bateria, orbita, tauler, mapa2D, oceans;
+			var container,  container2, content, content2, camera, camera2D, scene, renderer;
+			var meshTerra, llegenda, discs, bateria, orbita, tauler, mapa2D;
 			var omegaSat, periodeSat, aOrbita, bOrbita, eOrbita, pOrbita;
 			var angleInclinacio;
 			var vEsferic;
-			var geometrySat, geometryTrajectoria, materialTrajectoria, geometryLink2D, materialLink2D, geometryLink3D, materialLink3D, geometryDiscs, materialDiscs, geometryBateria, materialBateria, materialOrbita, geometryEstacio, materialEstacio, geometryEstacio3D, materialEstacio3D, geometryZona, materialZona;
+			var geometrySat, geometryLink3D, materialLink3D, materialOrbita, geometryEstacio, geometryEstacio3D, materialEstacio3D;
 			var textPeriode;
             var grupMon;
 			var folder1,folder4;
 			var quaternionTerra;
-			var estacio=[];
 			var estacio3D=[];
-			var zona=[];
 			var link2D=[];
 			var link3D=[];
-			var posLink2D=[];
 			var posLink3D=[];
 			var proximitat=[];
 			var zonaProx=[];
-			var numMove;
-            var maxSat=6;
+            var maxSat=1;
 			var maxOrb=1;
-            var sat2D=[];
             var sat3D=[];
 			var grupSat=[];
 			var angleEscombrat=[];
+			var app;
+			var puntSat=[];
+			var puntEstacio=[];
+			var puntZona=[];
+			var tros=[];
+			var appExploracio;
 
 			// CONSTANTS TERRA            
             const MU=398694790080000; // G * massa de la Terra, S.I.
@@ -117,33 +159,22 @@
 			const omegaSol=omega/365.256363; // freqüencia angular de translació de la Terra entorn al Sol, rad/s
 
 			// CONSTANTS SIMULACIÓ
-			const maxPoints = 4096; // màxim de punts en la trajectòria
 			const maxPointsGraph = 8192; // màxim de punts en les gràfiques
 			const shiftCount=1;	// al cap de quants renderings s'agafa un punt de la trajectòria
 			const midaSatelit=0.04; // escala d'ampliació del OBJ del satèl·lit
-            const centreX=0; // origen en X del mapa 2D de la Terra
-			const centreY=-1.75; // origen en Y del mapa 2D de la Terra
-			const marge2D=0.1; // marge horitzontal i vertical entre els límits del tauler de gràfiques i els eixos XY
-			const mAmplada=1.5; // amplada del mapa 2D de la Terra
-			const mAlsada=mAmplada/2; // alçada del mapa 2D de la Terra
-			const origenX=centreX - mAmplada + marge2D; // coordenada X de l'origen de coordenades al tauler de gràfiques
-			const origenY=centreY + mAlsada + 0.1 + marge2D; // coordenada Y de l'origen de coordenades al tauler de gràfiques
-			const finalX=centreX + mAmplada - marge2D; // coordenada X máxima en el tauler de gràfiques
-			const finalY=centreY +  4 * mAlsada + 0.1 - marge2D; // coordenada Y máxima en el tauler de gràfiques
-			const shiftZ=0.01; // distància entre objectes en la coordenada Z en l'escena 2D. 0,mapa,tauler. 1,sat2D, estacions, zones, proximitats, trajectòria, gràfiques i llegenda
 			const stepAngle=1; // al cap de quants graus es considera un nou punt en la zona de proximitat
-			const perCent2D=0.4; // tant per u que ocupa l'escena 2D de la dreta
+			const ample = 0.5;
+			const ampleRight = 0.5;
+			const radiPunt=4;
+			const midaMapa=256;
+			const midaQuadre=16;
 
 			// CONSTANTS DESPESA DISC I BATERIA
-			const ritmeDiscCamera=-0.001;
-			const ritmeDiscRadar=-0.001;
-			const ritmeDiscTransfer=0.064;
+			const ritmeDiscTransfer=0.02;
 
-			const ritmeBateriaCamera=-0.005;
-			const ritmeBateriaRadar=-0.005;
-			const ritmeBateriaDiscs=-0.0001;
-			const ritmeBateriaTransfer=-0.005;
-			const ritmeBateriaPanell=0.002;
+			//const ritmeBateriaDiscs=0;//-0.05;
+			const ritmeBateriaTransfer=-0.01;
+			const ritmeBateriaPanell=0.01;
 
             // VARIABLES DE SIMULACIÓ	
 			var ambWebgl; // el navegador suporta WebGL			
@@ -176,11 +207,19 @@
 			var satMin=1; // distància mínima entre el centre de la Terra i el Satèl·lit (en referència a 1, radi de la Terra)
 			var botoIniciar;
 			var estil;
+			var origenX, finalX, origenY, finalY;
+			var app;
+			var ritmeDisc = 0;
+			var ritmeBateria = 0;
+			var centreMapaX = midaMapa; //window.innerWidth * ampleRight / 2;
+			var centreMapaY = 600; //window.innerHeight/ 2 + midaMapa;
 
 			// SENSORS
 			var row_sen=[];
 			var potSensors=0;
 			var disSensors=0;	
+			var totalPot=0;
+			var totalDis=0;
 
 			function initGUI() {
 				var menuDiv = document.getElementById( 'dat' );
@@ -192,9 +231,9 @@
 				folder1.add( parametres, "argPerigeu", -180, 180, 1 ).name("Arg. del perigeu").onChange( canviaParametres );
 				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange( canviaSemieix );
 				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange( canviaExcentricitat );
-				folder1.add( parametres, "nSat", 1, maxSat, 1 ).name("Satèl·lits en òrbita").onChange( canviaNombre );
+				//folder1.add( parametres, "nSat", 1, maxSat, 1 ).name("Satèl·lits en òrbita").onChange( canviaNombre );
 				//folder1.add( parametres, "nOrb", 1, maxSat, 1 ).name("Quantitat d'òrbites").onChange( canviaNombre );
-                //folder1.add( parametres, "anomalia", -180, 180, 1 ).name("Anomalia veritable").onChange( canviaParametres );
+                folder1.add( parametres, "anomalia", -180, 180, 1 ).name("Anomalia veritable").onChange( canviaAnomalia );
 				textPeriode=folder1.add( parametres, "display");
 				textPeriode.name("PERÍODE :");
 				textPeriode.domElement.hidden = true;
@@ -208,16 +247,14 @@
 				var folder6 = gui.addFolder( 'ZONES D\'ESTUDI' );
                 folder6.add( parametres, "radiZona", 100, 8000, 100 ).name("Radi de les zones").onChange( canviaRadiZona );
 				folder6.add( parametres, "afegirZona").name("Afegir zona");
-				folder6.add( parametres, "eliminarZona").name("Eliminar zona");
-				
-				var folder7 = gui.addFolder( 'SIMULADOR' );				
-				folder7.add( parametres, "infoParametres").name("INFO paràmetres");	
+				folder6.add( parametres, "eliminarZona").name("Eliminar zona");				
+				//var folder7 = gui.addFolder( 'SIMULADOR' );				
+				//folder7.add( parametres, "infoParametres").name("Paràmetres");	
 				//folder7.open();
 				//*/
-
-				var folder3 = gui.addFolder( 'SIMULACIÓ' );				
+				var folder3 = gui.addFolder( 'SIMULACIÓ' );	
+				folder3.add( parametres, "infoParametres").name("Paràmetres");			
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png' ]).name("Tipus de mapa").onChange( canviaMapa );
-				//folder3.add( parametres, "veureLine").name("Mostrar trajectòria").onChange( veureLine );
 				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				botoIniciar = folder3.add( parametres, "pausa");
 				botoIniciar.name("I N I C I A R");
@@ -229,21 +266,19 @@
                 //folder2.open();
 				//folder6.open();
 				folder3.open();
-				//*
-
 				
-				var guiDret = new dat.GUI({width:350});
+				var guiDret = new dat.GUI({width:300});
 				folder4 = guiDret.addFolder( 'EQUIPAMENT DEL SATÈL·LIT' );
-				folder4.add( parametres, "panells", 1, 5, 1 ).name("Panells solars"); //.onChange( canviaSatelit );
+				folder4.add( parametres, "panells", 1, 5, 1 ).name("Panells solars");
 				folder4.add( parametres, "discs", 1, 5, 1 ).name("Unitats de disc");
-				folder4.add( parametres, "cameres", 0, 5, 1 ).name("Càmeres òptiques");
-				folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
+				folder4.add( parametres, "infoSensors").name("Sensors");
+				//folder4.add( parametres, "cameres", 0, 5, 1 ).name("Càmeres òptiques");
+				//folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
 				folder4.open();
-				//var folder5 = guiDret.addFolder( 'INFORMACIÓ ADDICIONAL' );
-				//folder5.add( parametres, "infoSatelit").name("Informació del satèl·lit");	
-				//folder5.add( parametres, "infoSensors").name("Informació del sensors");		
-				//folder5.add( parametres, "infoMissions").name("Informació de les missions");						
-				//folder5.add( parametres, "selMissio").name("Selecciona una missió");					
+				var folder5 = guiDret.addFolder( 'INFORMACIÓ ADDICIONAL' );
+				folder5.add( parametres, "infoSatelit").name("Satèl·lit");		
+				folder5.add( parametres, "infoMissions").name("Missions");						
+				folder5.add( parametres, "selMissio").name("Selecciona missió");					
 				//folder5.open();
 			}
 
@@ -267,7 +302,6 @@
 					eliminarZona: botoEliminarZona,
 					mapa2D: 'mapa_fisic_silueta.png', // fitxer de textura del mapa
 					mapa3D: 'mapa_fisic.png', // fitxer de textura del mapa
-					veureLine: false, // veure o no la trajectòria
 					velAnimacio: 3, // velocitat de l'animació
 					display : true, // visualitzador del període del satèl·lit. El valor booleà no té cap efecte
 					pausa: botoPausa, // botó per pausar o reprendre la simulació
@@ -282,7 +316,8 @@
 					radars: 1
 				};
 
-				container = document.getElementById( 'container' );
+				container = document.getElementById( 'content' );
+				container2 = document.getElementById( 'content2' );
                 // CÀMERA
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
 				camera.up.set(0,0,1);
@@ -290,13 +325,8 @@
 				camera.position.y = 0; // green
 				camera.position.z = 0; // blue
 
-				camera2D = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 4, 4.5);
-				camera2D.position.z = 4.5; 
-
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x131313 );
-
-				scene2D = new THREE.Scene();
 
                 // LLUM
                 var ambientLight = new THREE.AmbientLight( 0x444444 ); // 10%
@@ -352,96 +382,33 @@
 						}
 					}					
 				}, onProgress, onError );				
-
-				// SATÈL·LIT 2D
-                materialSat2D = new THREE.MeshBasicMaterial( { color: 0xffffff} );
-				var geometrySat2D = new THREE.CircleGeometry(0.02);
-                for(i=0;i<maxSat;i++) {
-				    sat2D[i] = new THREE.Mesh( geometrySat2D, materialSat2D );
-                }
-				
-				// MÀSCARA OCEANS
-				var managerOceans = new THREE.LoadingManager();
-				managerOceans.onProgress = function ( item, loaded, total ) {
-				scene2D.add(oceans);
-				};
-				var loader = new THREE.OBJLoader( managerOceans );
-				loader.load( 'imatges/oceans.obj', function ( object ) {
-					object.scale.set(0.0118,0.0118,0.0118);
-					object.position.set(centreX,centreY,-shiftZ);
-					oceans=object.clone();					
-				}, onProgress, onError );
-
+			
 				// ÒRBITA
 				materialOrbita = new THREE.LineBasicMaterial( { color : 0xffffff } );
 				var geometryOrbita = new THREE.BufferGeometry();
 				orbita = new THREE.Line( geometryOrbita, materialOrbita );
 
-				// TRAJECTÒRIA
-				materialTrajectoria = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
-
-				// LINK 2D
-				materialLink2D = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
-				geometryLink2D = new THREE.BufferGeometry();
-                for(i=0;i<maxSat;i++) {
-                    link2D[i]=[];
-				    link2D[i][0] = new THREE.Line(geometryLink2D, materialLink2D);
-                    posLink2D[i]=[];
-                }
-
 				// LINK 3D
-				materialLink3D = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
+				/*materialLink3D = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
+				
+				for(i=0;i<maxSat;i++) {
+					posLink3D[i]=[];
+					posLink3D[i][0] = new Float32Array(2 * 3);
+					geometryLink3D = new THREE.BufferGeometry();
+					geometryLink3D.addAttribute('position', new THREE.BufferAttribute(posLink3D[i][0], 3));
+					link3D[i]=[];
+					link3D[i][0] = new THREE.Line(geometryLink3D, materialLink3D);
+					scene.add(link3D[i][0]);
+					link3D[i][0].geometry.attributes.position.needsUpdate = true;
+				}*/
 
-				// DISCS
-				materialDiscs = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 2	});
-
-				// BATERIA
-				materialBateria = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2	});
-
-				// ESTACIÓ 2D
-				materialEstacio = new THREE.MeshBasicMaterial( { color: 0xff0000} );
-				geometryEstacio = new THREE.CircleGeometry(0.03);
-				estacio[0]= new THREE.Mesh( geometryEstacio, materialEstacio );
-				scene2D.add(estacio[0]);
 
 				// ESTACIÓ 3D
 				materialEstacio3D = new THREE.MeshBasicMaterial( { color: 0xff0000} );
 				geometryEstacio3D = new THREE.SphereGeometry( 0.02, 6, 6 );
 				estacio3D[0] = new THREE.Mesh( geometryEstacio3D, materialEstacio3D );
-				mouEstacio(0);
 
-				// ZONA D'ESTUDI
-				materialZona = new THREE.MeshBasicMaterial( { color: 0xffc300} );
-				geometryZona = new THREE.CircleGeometry(0.03);
-				zona[0]= new THREE.Mesh( geometryZona, materialZona );
-				scene2D.add(zona[0]);
-				mouZona(0);				
-
-				// TAULER DE GRÀFIQUES	
-
-				var loader = new THREE.TextureLoader();
-				loader.load( 'imatges/'+"eixos2D.png", function ( texture ) {
-					var geometryTauler = new THREE.PlaneGeometry(300/100,225/100);
-					var materialTauler = new THREE.MeshBasicMaterial( {map: texture} );
-					tauler = new THREE.Mesh( geometryTauler, materialTauler);
-					tauler.position.x=centreX;
-					tauler.position.y=centreY+2.5*mAlsada+0.1;
-					tauler.position.z=0;
-					scene2D.add( tauler )
-				} );
-
-				loader = new THREE.TextureLoader();
-				loader.load( 'imatges/'+"llegenda.png", function ( texture ) {
-					var geometryLlegenda = new THREE.PlaneGeometry(203/200,46/200);
-					var materialLlegenda = new THREE.MeshBasicMaterial( {map: texture} );
-					llegenda = new THREE.Mesh( geometryLlegenda, materialLlegenda);
-					llegenda.position.x=0.7;
-					llegenda.position.y=centreY+1.15;
-					llegenda.position.z=shiftZ;
-					scene2D.add( llegenda );
-				} );
-
-                // MÓN
+				// MÓN
                 grupMon.setRotationFromAxisAngle(new THREE.Vector3(1,0,0),-angleTerra);
                 scene.add(grupMon);
 			
@@ -458,178 +425,172 @@
 					alert("Aquest navegador no és compatible amb WebGL,\nalgunes funcionalitats del simulador no estaran disponibles.");
 				}
 				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.autoClear = false;
+				renderer.setSize( window.innerWidth * ample, window.innerHeight );
 				container.appendChild( renderer.domElement );
+				app = new PIXI.Application({width: window.innerWidth * ampleRight, height: window.innerHeight});
+				app.renderer.backgroundColor = 0x131313;
+				container2.appendChild(app.view);	
+
+				centreMapaX = window.innerWidth * ampleRight / 2;
+				centreMapaY = window.innerHeight/ 2 + midaMapa-20;
+
+				origenX=centreMapaX-240;
+				finalX=centreMapaX+240;
+				origenY=centreMapaY-260-midaMapa;
+				finalY=centreMapaY+90-midaMapa;
+
+				PIXI.loader
+					.add("imatges/mapa_fisic.png")
+					.add("imatges/mapa_fisic_silueta.png")
+					.add("imatges/sat_punt.png")
+					.add("imatges/estacio_punt.png")
+					.add("imatges/zona_punt.png")
+					.add("imatges/eixos2D2D.png")
+					.add("imatges/llegenda2D.png")
+					.add("imatges/8k_earth_daymap.jpg")
+					.load(setup);
+					function setup() {
+						var silueta = new PIXI.Sprite(PIXI.loader.resources["imatges/mapa_fisic_silueta.png"].texture);
+						silueta.x=centreMapaX-midaMapa;
+						silueta.y=centreMapaY-midaMapa/2;
+						app.stage.addChild(silueta);
+
+						// TAULER DE GRÀFIQUES	
+
+						var tauler = new PIXI.Sprite(PIXI.loader.resources["imatges/eixos2D2D.png"].texture);
+						tauler.x = centreMapaX-257;
+						tauler.y = centreMapaY-midaMapa-280;
+						app.stage.addChild(tauler);
+
+						var llegenda = new PIXI.Sprite(PIXI.loader.resources["imatges/llegenda2D.png"].texture);
+						llegenda.x = centreMapaX-258;
+						llegenda.y = centreMapaY-midaMapa-340;
+						app.stage.addChild(llegenda);
+				
+						baseTx=PIXI.loader.resources["imatges/mapa_fisic.png"].texture;
+						for(i=0;i<midaQuadre*2;i++){
+							tros[i]=[];
+							for(j=0;j<midaQuadre;j++) {
+								var rectangle = new PIXI.Rectangle(i*midaQuadre, j*midaQuadre, midaQuadre, midaQuadre);
+								texture = new PIXI.Texture(baseTx, rectangle);
+								tros[i][j]= new PIXI.Sprite(texture);
+								tros[i][j].x=centreMapaX - midaMapa + i * midaQuadre;
+								tros[i][j].y=centreMapaY - midaMapa/2 + j * midaQuadre;
+								tros[i][j].visible=false;
+								tros[i][j].interactive = true;
+								tros[i][j].buttonMode = true;
+								tros[i][j].on('pointerdown', function(e) {
+												var i=(this.position.x+midaMapa-centreMapaX)/midaQuadre;
+												var j=(this.position.y-midaMapa/2-centreMapaY)/midaQuadre;
+												mostraTros(i,j);
+											});
+								app.stage.addChild(tros[i][j]);
+							}
+						}
+
+						baseHD=PIXI.loader.resources["imatges/8k_earth_daymap.jpg"].texture;	
+
+						puntEstacio[0]=new PIXI.Sprite(PIXI.loader.resources["imatges/estacio_punt.png"].texture);
+						puntEstacio[0].index=0;
+						puntEstacio[0].interactive = true;
+						puntEstacio[0].buttonMode = true;
+						puntEstacio[0].on('pointerdown', onDragStartEst);
+						puntEstacio[0].on('pointermove', onDragMove);
+						puntEstacio[0].on('pointerup', onDragEndEst);
+						app.stage.addChild(puntEstacio[0]);
+
+						puntZona[0]=new PIXI.Sprite(PIXI.loader.resources["imatges/zona_punt.png"].texture);
+						puntZona[0].index=0;
+						puntZona[0].interactive = true;
+						puntZona[0].buttonMode = true;
+						puntZona[0].on('pointerdown', onDragStartZona);
+						puntZona[0].on('pointermove', onDragMove);
+						puntZona[0].on('pointerup', onDragEndZona);
+						app.stage.addChild(puntZona[0]);
+
+						mouEstacio(0);
+						mouZona(0);
+
+						for(i=0;i<maxSat;i++) {
+				    		puntSat[i] = new PIXI.Sprite(PIXI.loader.resources["imatges/sat_punt.png"].texture);
+							app.stage.addChild(puntSat[i]);
+                		}
+
+						// UNITATS DE DISC I BATERIA
+						discs =	new PIXI.Graphics();
+						bateria = new PIXI.Graphics();
+				}	
+		
+				WIDTH=window.innerWidth * ampleRight;
+				HEIGHT=window.innerHeight;
+				
+				var ratio = Math.min(WIDTH/(2*midaMapa), HEIGHT/(3.5*midaMapa));
+				app.stage.position.set(WIDTH/2, HEIGHT/2);
+				app.stage.scale.set(ratio, ratio);
+				app.stage.pivot.set(WIDTH/2, HEIGHT/2);
+										
 				controls = new THREE.OrbitControls( camera, renderer.domElement );
 				window.addEventListener( 'resize', onWindowResize, false );
-				window.addEventListener( 'mousedown', onMouseDown, false );
-				window.addEventListener( 'mouseup', onMouseUp, false );
-				window.addEventListener( 'mousemove', onMouseMove, false );
 				window.addEventListener( 'focus', onFocus, false );
-				window.addEventListener( 'touchstart', onTouchStart, false );
-				window.addEventListener( 'touchmove', onTouchMove, false );
-				//window.addEventListener( 'touchend', onTouchEnd, false );
 
 				initGUI();
+			}
+
+			function mostraTros(i,j) {
+				if(appExploracio==undefined) {
+					appExploracio = new PIXI.Application({width: 512, height: 512});
+					appExploracio.renderer.backgroundColor = 0x000000;
+					contenidor = document.getElementById('missatgeExploracio');
+					contenidor.appendChild(appExploracio.view);
+				}
+				var rectangle = new PIXI.Rectangle(i*4096/32, j*4096/32, 4096/32, 4096/32);
+				texture = new PIXI.Texture(baseHD, rectangle);
+				exploracio = new PIXI.Sprite(texture);
+				exploracio.setTransform(0,0,4,4);
+				appExploracio.stage.addChild(exploracio);
+				$("#finestraExploracio").css({"visibility":"visible"});
+				$("#finestraExploracio").modal('show');
 			}
 
 			function onFocus(){
 				canviaParametres();
 			}
 
-			function onTouchStart(evt){
-				//evt.preventDefault();
-				//evt.stopPropagation();
-				var touches = evt.changedTouches;
-				getLatLon(parseInt(touches[0].clientX),parseInt(touches[0].clientY));
-				//textPeriode.name('touch:'+parseInt(touches[0].clientX)+','+parseInt(touches[0].clientY));
-				numMove=-1;			
-				var i=0;
-				do {					
-					intersects=rayCaster.intersectObject(estacio[i],true);				
-					if (intersects.length > 0) {
-						//textPeriode.name("inside");
-						numMove=i;
-						controls.enabled=false;
-						dragging=true;
-						dragEstacio=true;
-						scene2D.remove(proximitat[numMove]);
-					}
-					i++;
-				}
-				while(numMove<0 && i<numEstacions);
+			function onDragStartEst(evt) {
+				this.data = evt.data;
+    			this.dragging = true;
+				proximitat[this.index].clear();
+			}
 
-				if (numMove<0) {
-					i=0;
-					do {					
-						intersects=rayCaster.intersectObject(zona[i],true);				
-						if (intersects.length > 0) {
-							numMove=i;						
-							controls.enabled=false;
-							dragging=true;
-							dragEstacio=false;
-							scene2D.remove(zonaProx[numMove]);
-						}
-						i++;
-					}
-					while(numMove<0 && i<numZones);
+			function onDragMove(evt) {
+				if (this.dragging)
+				{
+					var newPosition = this.data.getLocalPosition(this.parent);
+					this.position.x = newPosition.x;
+					this.position.y = newPosition.y;
 				}
 			}
 
-			function getLatLon(X,Y) {
-				mousePosition = new THREE.Vector2();
-				canvas = renderer.domElement;
-				canvasPosition = $(canvas).position();
-				rayCaster = new THREE.Raycaster();
-				var left=(1-perCent2D)*window.innerWidth+1;
-				var width=perCent2D*window.innerWidth-2;				
-
-				mousePosition.x = ((X - left) / width) * 2 - 1;
-				mousePosition.y = -((Y - canvasPosition.top) / canvas.height) * 2 + 1;
-				rayCaster.setFromCamera(mousePosition, camera2D);
+			function onDragEndEst(evt) {
+				this.dragging = false;
+				angleLatEstacio[this.index]=(-puntEstacio[this.index].position.y+centreMapaY)*Math.PI/midaMapa;
+				angleLonEstacio[this.index]=(puntEstacio[this.index].position.x-centreMapaX)*Math.PI/midaMapa;
+				mouEstacio(this.index);
+				this.data = null;
 			}
 
-			function onMouseDown(evt) {
-				getLatLon(parseInt(evt.clientX),parseInt(evt.clientY));
-				//textPeriode.name('mouse:'+parseInt(evt.clientX)+','+parseInt(evt.clientY))
-				numMove=-1;			
-				var i=0;
-				do {					
-					intersects=rayCaster.intersectObject(estacio[i],true);				
-					if (intersects.length > 0) {
-						numMove=i;						
-						controls.enabled=false;
-						dragging=true;
-						dragEstacio=true;
-						scene2D.remove(proximitat[numMove]);
-					}
-					i++;
-				}
-				while(numMove<0 && i<numEstacions);
-
-				if (numMove<0) {
-					i=0;
-					do {					
-						intersects=rayCaster.intersectObject(zona[i],true);				
-						if (intersects.length > 0) {
-							numMove=i;						
-							controls.enabled=false;
-							dragging=true;
-							dragEstacio=false;
-							scene2D.remove(zonaProx[numMove]);
-						}
-						i++;
-					}
-					while(numMove<0 && i<numZones);
-				}
-			};
-
-			function onTouchMove(evt) {
-				if (dragging) {
-					evt.preventDefault();
-					var touches = evt.changedTouches;
-					getLatLon(parseInt(touches[0].clientX),parseInt(touches[0].clientY));
-					intersects = rayCaster.intersectObject(mapa2D, true);
-					if (dragEstacio) {
-						if (intersects.length > 0) {
-							estacio[numMove].position.x=intersects[0].point.x;
-							estacio[numMove].position.y=intersects[0].point.y;
-						}
-					}
-					else {
-						if (intersects.length > 0) {
-							zona[numMove].position.x=intersects[0].point.x;
-							zona[numMove].position.y=intersects[0].point.y;
-						}
-						
-					}
-				}
+			function onDragStartZona(evt) {
+				this.data = evt.data;
+    			this.dragging = true;
+				zonaProx[this.index].clear();
 			}
 
-			function onMouseMove(evt) {
-				if (dragging) {
-					evt.preventDefault();
-					getLatLon(evt.clientX,evt.clientY);
-					intersects = rayCaster.intersectObject(mapa2D, true);
-					if (dragEstacio) {
-						if (intersects.length > 0) {
-							estacio[numMove].position.x=intersects[0].point.x;
-							estacio[numMove].position.y=intersects[0].point.y;
-						}
-					}
-					else {
-						if (intersects.length > 0) {
-							zona[numMove].position.x=intersects[0].point.x;
-							zona[numMove].position.y=intersects[0].point.y;
-						}
-						
-					}
-				}
-			}
-
-			function onMouseUp(evt) {
-				if (dragging) {
-					evt.preventDefault();
-					getLatLon(evt.clientX,evt.clientY);
-					if (dragEstacio) {
-						intersects = rayCaster.intersectObject(oceans, true);
-						if (intersects.length > 0) {
-							alert("L'estació de seguiment ha d'estar en terra ferma,\nno pot ubicar-se a l'oceà.")
-						} else {
-							angleLatEstacio[numMove]=(estacio[numMove].position.y-centreY)*Math.PI/mAmplada;
-							angleLonEstacio[numMove]=(estacio[numMove].position.x-centreX)*Math.PI/mAmplada;
-						}
-						mouEstacio(numMove);
-					} else {
-						angleLatZona[numMove]=(zona[numMove].position.y-centreY)*Math.PI/mAmplada;
-						angleLonZona[numMove]=(zona[numMove].position.x-centreX)*Math.PI/mAmplada;
-						mouZona(numMove);
-					}
-					controls.reset();
-					controls.enabled=true;					
-					dragging=false;
-				}
+			function onDragEndZona(evt) {
+				this.dragging = false;
+				angleLatZona[this.index]=(-puntZona[this.index].position.y+centreMapaY)*Math.PI/midaMapa;
+				angleLonZona[this.index]=(puntZona[this.index].position.x-centreMapaX)*Math.PI/midaMapa;
+				mouZona(this.index);
+				this.data = null;
 			}
 
 			function botoPausa() {		
@@ -655,9 +616,9 @@
 					}
 
 					// APORTACIONS I DESPESES DE DISC I BATERIA
+					ritmeDisc=0;
+					ritmeBateria=0;
 
-					var ritmeDisc=0;
-					var ritmeBateria=0;
 					var enregistrant=false;
 					var transferint=false;
 
@@ -668,10 +629,8 @@
 					var zonaEstudi=0;
 					do { // Despesa única de càmeres i radar quan s'està dins d'alguna de les zones d'estudi
 						if (dintreZona[0][zonaEstudi]) {
-							ritmeDisc+=parametres.cameres*ritmeDiscCamera;
-							ritmeDisc+=parametres.radars*ritmeDiscRadar;
-							ritmeBateria+=parametres.cameres*ritmeBateriaCamera;
-							ritmeBateria+=parametres.radars*ritmeBateriaRadar;
+							ritmeDisc+=-disSensors/100000;
+							ritmeBateria+=-potSensors/10000;
 							enregistrant=true;
 						}
 						zonaEstudi++;
@@ -679,16 +638,16 @@
 					while(!enregistrant && zonaEstudi<numZones)
 
 					for(j=0;j<numEstacions;j++) { // Consum del transfer a totes les estacions properes
-						if (dintre[0][j]) {
+						if (dintre[0][j] && disSensors>0) {
 							ritmeDisc+=ritmeDiscTransfer;
 							ritmeBateria+=ritmeBateriaTransfer;
 							transferint=true;
 						}
 					}
 
-					if (transferint || enregistrant) { // Consum energètic dels discs
+					/*if (transferint || enregistrant) { // Consum energètic dels discs
 						ritmeBateria+=parametres.discs*ritmeBateriaDiscs;
-					}
+					}*/
 
 					nivellDiscs+=parametres.velAnimacio*interval*shiftCount*ritmeDisc/parametres.discs;
 
@@ -711,58 +670,43 @@
 					// Punts de les gràfiques
 
 					if (diaSencer) {
-						posDiscs[finalCountGraph * 3 + 0] = finalX;
-						posDiscs[finalCountGraph * 3 + 1] = origenY+(finalY-origenY)/100*(100-nivellDiscs);
-						posDiscs[finalCountGraph * 3 + 2] = shiftZ;	
-						posBateria[finalCountGraph * 3 + 0] = finalX;
-						posBateria[finalCountGraph * 3 + 1] = origenY+(finalY-origenY)/100*nivellBateria;
-						posBateria[finalCountGraph * 3 + 2] = shiftZ;	
+						posDiscs[finalCountGraph * 2 + 0] = finalX;
+						posDiscs[finalCountGraph * 2 + 1] = origenY+(finalY-origenY)/100*(100-nivellDiscs);
+						posBateria[finalCountGraph * 2 + 0] = finalX;
+						posBateria[finalCountGraph * 2 + 1] = origenY+(finalY-origenY)/100*(100-nivellBateria);
 						for(i=0;i<finalCountGraph;i++){							
-							posDiscs[i* 3 + 1] = posDiscs[i* 3 + 4];
-							posBateria[i* 3 + 1] = posBateria[i* 3 + 4];
+							posDiscs[i* 2 + 1] = posDiscs[i* 2 + 3];
+							posBateria[i* 2 + 1] = posBateria[i* 2 + 3];
 						}
 					} else {
-						posDiscs[countGraph * 3 + 0] = origenX+temps*(finalX-origenX)/segonsDia;
-						posDiscs[countGraph * 3 + 1] = origenY+(finalY-origenY)/100*(100-nivellDiscs);
-						posDiscs[countGraph * 3 + 2] = shiftZ;
-						posBateria[countGraph * 3 + 0] = origenX+temps*(finalX-origenX)/segonsDia;
-						posBateria[countGraph * 3 + 1] = origenY+(finalY-origenY)/100*nivellBateria;
-						posBateria[countGraph * 3 + 2] = shiftZ;
-						for(i=countGraph+1;i<maxPointsGraph;i++){							
-							posDiscs[i* 3 + 2] = -100;
-							posBateria[i* 3 + 2] = -100;
-						}
+						posDiscs[countGraph * 2 + 0] = origenX+temps*(finalX-origenX)/segonsDia;
+						posDiscs[countGraph * 2 + 1] = origenY+(finalY-origenY)/100*(100-nivellDiscs);
+						posBateria[countGraph * 2 + 0] = origenX+temps*(finalX-origenX)/segonsDia;
+						posBateria[countGraph * 2 + 1] = origenY+(finalY-origenY)/100*(100-nivellBateria);		
 						countGraph++;
 					}
-				
-					discs.geometry.attributes.position.needsUpdate = true;
-					bateria.geometry.attributes.position.needsUpdate = true;
+					discs.clear();
+					discs.position.set(0,0);	
+			        discs.lineStyle(1, 0x0000FF);
+					discs.moveTo(origenX,origenY);
+					app.stage.addChild(discs);
+					bateria.clear();
+					bateria.position.set(0,0);	
+			        bateria.lineStyle(1, 0x00FF00);
+					bateria.moveTo(origenX,origenY+(finalY-origenY)/2);
+					app.stage.addChild(bateria);
+					for(i=0;i<countGraph;i++) {
+						discs.lineTo(posDiscs[i * 2 + 0],posDiscs[i * 2 + 1]);
+						bateria.lineTo(posBateria[i * 2 + 0],posBateria[i * 2 + 1]);
+					}
 				}								
 			}
 
 			function addPoint(){
-				if(!enPausa) {
-					/*pos2D[count * 3 + 0] = sat2D[0].position.x;
-					pos2D[count * 3 + 1] = sat2D[0].position.y;
-					pos2D[count * 3 + 2] = sat2D[0].position.z;	
-
-					if(count==maxPoints-1) {
-						for(i=0;i<maxPoints*3-3;i++) {
-							pos2D[i]=pos2D[i+3];
-						}
-					}
-					else {
-						for(i=count+1;i<maxPoints;i++){							
-							pos2D[i* 3 + 2] = -100;
-						}
-						count++;
-					}	*/	
-
-					//trajectoria.geometry.attributes.position.needsUpdate = true;
-					
+				if(!enPausa) {				
                     for(i=0;i<maxSat;i++) {
-                        var laLatitud=(sat2D[i].position.y-centreY)*Math.PI/mAmplada;
-                        var laLongitud=(sat2D[i].position.x-centreX)*Math.PI/mAmplada;
+                        var laLatitud=(centreMapaY-puntSat[i].y-radiPunt)/midaMapa*Math.PI;
+                        var laLongitud=(puntSat[i].x-centreMapaX+radiPunt)/midaMapa*Math.PI;
 
                         var distanciaActual=0;
                         dintre[i]=[];
@@ -781,6 +725,11 @@
                             distanciaActual=distancia(angleLatZona[j],laLatitud,angleLonZona[j],laLongitud);
                             if (distanciaActual<parametres.radiZona*1000) {
                                 dintreZona[i][j]=true;
+								var numTrosX=Math.floor(((puntSat[0].x + radiPunt - centreMapaX) + midaMapa) / midaQuadre);
+								var numTrosY=Math.floor(((puntSat[0].y + radiPunt - centreMapaY) + midaMapa/2) / midaQuadre);
+								if (tros[numTrosX][numTrosY].visible==false) {
+									tros[numTrosX][numTrosY].visible=true;
+								}
                             }
                             else {
                                 dintreZona[i][j]=false;
@@ -807,47 +756,38 @@
 						var worldSat3D=new THREE.Vector3();
 						sat3D[s][i].getWorldPosition(worldSat3D);
 						for(j=0;j<numEstacions;j++) {
-							if (posLink2D[i][j]!=null) {
-								posLink2D[i][j][0]=estacio[j].position.x;
-								posLink2D[i][j][1]=estacio[j].position.y;
-								posLink2D[i][j][3]=sat2D[i].position.x;
-								posLink2D[i][j][4]=sat2D[i].position.y;
+							if (link2D[i][j]!=null) {
+								link2D[i][j].clear();
+								link2D[i][j].position.set(0,0);	
+								link2D[i][j].lineStyle(1, 0xFF0000);
+								link2D[i][j].moveTo(puntEstacio[j].x+radiPunt,puntEstacio[j].y+radiPunt);
+								app.stage.addChild(link2D[i][j]);
 
 								var worldEstacio3D=new THREE.Vector3();
 								estacio3D[j].getWorldPosition(worldEstacio3D);
 
 								if (dintre[i][j]) {
-									posLink2D[i][j][2]=estacio[j].position.z;
-									posLink2D[i][j][5]=sat2D[0].position.z;
-									posLink3D[i][j][0]=worldEstacio3D.x;
+									link2D[i][j].lineTo(puntSat[i].x+radiPunt,puntSat[i].y+radiPunt);
+									/*posLink3D[i][j][0]=worldEstacio3D.x;
 									posLink3D[i][j][1]=worldEstacio3D.y;
 									posLink3D[i][j][2]=worldEstacio3D.z;
 									posLink3D[i][j][3]=worldSat3D.x;
 									posLink3D[i][j][4]=worldSat3D.y;
-									posLink3D[i][j][5]=worldSat3D.z;
+									posLink3D[i][j][5]=worldSat3D.z;*/
 								}
-								else {
-									posLink2D[i][j][2]=0;
-									posLink2D[i][j][5]=0;
+								/*else {
 									for(k=0;k<6;k++) {
 										posLink3D[i][j][k]=0;
 									}
 								}
-								link2D[i][j].geometry.attributes.position.needsUpdate = true;
-								link3D[i][j].geometry.attributes.position.needsUpdate = true;
+								if (link3D[i][j]!=undefined) {
+									link3D[i][j].geometry.attributes.position.needsUpdate = true;
+								}*/
 							}
 						}
 					}
 				}
 			}			
-
-			function veureLine() {
-				/*if(parametres.veureLine) {
-					scene2D.add(trajectoria);
-				} else {
-					scene2D.remove(trajectoria);
-				}  */
-			}
 
 			function canviaSemieix() {
 				var eMax=1-satMin*rTerra/(parametres.aOrbita*1000);
@@ -858,6 +798,15 @@
 			function canviaExcentricitat() {
 				var aMin=satMin*rTerra/(1-parametres.excentricitat)/1000;
 				folder1.__controllers[3].min(aMin);
+				canviaParametres();
+			}
+
+			function canviaAnomalia() {
+				for(i=0;i<parametres.nSat;i++) {
+                    for(j=0;j<numEstacions;j++) {
+						link2D[i][j].clear();
+                    }
+                }
 				canviaParametres();
 			}
 
@@ -894,15 +843,13 @@
 				for(s=0;s<parametres.nOrb;s++) {
 					for(i=0;i<maxSat;i++) {
 						grupSat[s].remove(sat3D[s][i]);
-						scene2D.remove(sat2D[i]);
-						link3D[i]=[];
+						//link3D[i]=[];
 					}
 				}	
 				for(s=0;s<parametres.nOrb;s++) {
 					for(i=0;i<parametres.nSat;i++) {
 						grupSat[s].add(sat3D[s][i]);
 						sat3D[s][i].scale.set(mida,mida,mida);
-						scene2D.add(sat2D[i]);
 					}
 				}				
 
@@ -915,28 +862,14 @@
 				orbita.quaternion.copy(quaternionTerra);
 				grupMon.add(orbita);
 				
-			// LINK 2D
-                for(i=0;i<parametres.nSat;i++) {
-                    for(j=0;j<numEstacions;j++) {
-                        //scene2D.remove(link2D[i][j]);
-                        geometryLink2D = new THREE.BufferGeometry();
-                        posLink2D[i][j] = new Float32Array(2 * 3);
-                        geometryLink2D.addAttribute('position', new THREE.BufferAttribute(posLink2D[i][j], 3));
-                        link2D[i][j] = new THREE.Line(geometryLink2D, materialLink2D);
-                        if (ambWebgl) {
-                            scene2D.add(link2D[i][j]);
-                        }
-                    }
-                }
-
-			// LINK 3D (satèl·lit i, estació j, coordenada)
-                for(i=0;i<maxSat;i++) {
+			// LINK 3D (satèl·lit i, estació j)
+                /*for(i=0;i<maxSat;i++) {
 					for(j=0;j<numEstacions;j++) {
 						scene.remove(link3D[i][j]);
                     }					
-				}
-
-				for(i=0;i<parametres.nSat;i++) {
+				}*/
+				
+				/*for(i=0;i<parametres.nSat;i++) {
                     posLink3D[i]=[];
                     for(j=0;j<numEstacions;j++) {
                         geometryLink3D = new THREE.BufferGeometry();
@@ -945,25 +878,21 @@
                         link3D[i][j] = new THREE.Line(geometryLink3D, materialLink3D);
                         scene.add(link3D[i][j]);
                     }
-                }
+                }*/
 
-			// UNITATS DE DISC
-				scene2D.remove(discs);
-				geometryDiscs = new THREE.BufferGeometry();
-				posDiscs = new Float32Array(maxPointsGraph * 3);
-				geometryDiscs.addAttribute('position', new THREE.BufferAttribute(posDiscs, 3));
-				geometryDiscs.setDrawRange( 1, maxPointsGraph );
-				discs = new THREE.Line(geometryDiscs, materialDiscs);
-				scene2D.add(discs);
+			// DISCS
+				posDiscs = new Float32Array(maxPointsGraph * 2);
 
 			// BATERIA
-				scene2D.remove(bateria);
-				geometryBateria = new THREE.BufferGeometry();
-				posBateria = new Float32Array(maxPointsGraph * 3);
-				geometryBateria.addAttribute('position', new THREE.BufferAttribute(posBateria, 3));
-				geometryBateria.setDrawRange( 1, maxPointsGraph );
-				bateria = new THREE.Line(geometryBateria, materialBateria);
-				scene2D.add(bateria);
+				posBateria = new Float32Array(maxPointsGraph * 2);
+
+			// LINK 2D
+				for(i=0;i<parametres.nSat;i++) {
+					link2D[i]=[];
+                    for(j=0;j<numEstacions;j++) {
+						link2D[i][j]=new PIXI.Graphics();
+                    }
+                }
 		
 			// REININCI SIMULACIÓ
 				previousTime=new Date().getTime();
@@ -979,15 +908,28 @@
 						angleEscombrat[i]=parametres.anomalia*Math.PI/180 + 2* Math.PI / parametres.nSat * i;
 					}
 				}
-				veureLine();
+				for(i=0;i<32;i++) {
+					for(j=0;j<midaQuadre;j++) {
+						if (tros[i]!=undefined) {
+							tros[i][j].visible=false;
+						}
+					}
+				}
 			}
 
-			function onWindowResize() {
-				camera.aspect = window.innerWidth / window.innerHeight;
+			function onWindowResize() {				
+				camera.aspect = window.innerWidth * ample / window.innerHeight;
 				camera.updateProjectionMatrix();
-				camera2D.aspect = window.innerWidth / window.innerHeight;
-				camera2D.updateProjectionMatrix();
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( window.innerWidth * ample, window.innerHeight );
+
+				WIDTH = window.innerWidth * ampleRight;
+				HEIGHT = window.innerHeight;
+			
+				var ratio = Math.min(WIDTH/(2*midaMapa), HEIGHT/(3.5*midaMapa));
+				app.stage.position.set(WIDTH/2, HEIGHT/2);
+				app.stage.scale.set(ratio, ratio);
+				app.stage.pivot.set(WIDTH/2, HEIGHT/2);
+				app.renderer.resize(WIDTH,HEIGHT);
 			}
 
 			function animate() {
@@ -999,7 +941,7 @@
 				if (!enPausa) {
 					var currentTime = new Date().getTime();
 					interval= currentTime - previousTime;
-					temps+=parametres.velAnimacio* interval;
+					temps+=parametres.velAnimacio * interval;
 					previousTime = currentTime;	
 				}
 
@@ -1029,10 +971,10 @@
 						var longitudMapa=vEsferic.z -omega * temps - voltes * 2 * Math.PI;                  
 
 						longitudAnterior=longitudMapa;	
-						
-						sat2D[i].position.x=centreX+longitudMapa*mAmplada/Math.PI;
-						sat2D[i].position.y=centreY+(Math.PI/2-vEsferic.y)*2*mAlsada/Math.PI;
-						sat2D[i].position.z=shiftZ;	
+						if (puntSat[i]!=undefined) {
+							puntSat[i].x=centreMapaX+longitudMapa*midaMapa/Math.PI-radiPunt;
+							puntSat[i].y=centreMapaY-(Math.PI/2-vEsferic.y)*midaMapa/Math.PI-radiPunt;
+						}
 					}
 					grupSat[s].quaternion.copy(quaternionTerra);
 				}               
@@ -1046,17 +988,9 @@
 					}
   				} 
 
-				camera.aspect=(1-perCent2D)*window.innerWidth/window.innerHeight;
-				camera2D.aspect=perCent2D*window.innerWidth/window.innerHeight;
+				camera.aspect=window.innerWidth * ample / window.innerHeight ;
 				camera.updateProjectionMatrix();
-				camera2D.updateProjectionMatrix();
-
-				renderer.setViewport(0,0,window.innerWidth,window.innerHeight);
-                renderer.clear();	
-				renderer.setViewport(1,1,(1-perCent2D)*window.innerWidth-2,window.innerHeight-2);
                 renderer.render( scene, camera );
-				renderer.setViewport((1-perCent2D)*window.innerWidth+1,1,perCent2D*window.innerWidth-2,window.innerHeight-2);
-                renderer.render( scene2D, camera2D );	
 			}
 		
 			function coordEsferiques(vector) {
@@ -1067,18 +1001,6 @@
 			}
 
 			function canviaMapa() {
-				var loader2 = new THREE.TextureLoader();
-				loader2.load( 'imatges/'+parametres.mapa3D, function (texture) {
-					// MAPA 2D
-					scene2D.remove(mapa2D);
-					var geometryMapa2D = new THREE.PlaneGeometry(2*mAmplada, 2*mAlsada );
-					var materialMapa2D = new THREE.MeshBasicMaterial(  { map: texture, overdraw: true});
-					mapa2D = new THREE.Mesh( geometryMapa2D, materialMapa2D );
-					mapa2D.position.x=centreX;
-					mapa2D.position.y=centreY;
-					mapa2D.position.z=0;
-					scene2D.add( mapa2D );
-				} );
 				var loader3 = new THREE.TextureLoader();
 				loader3.load( 'imatges/'+parametres.mapa3D, function (texture) {
                     // TERRA
@@ -1099,9 +1021,9 @@
                 var manager = new THREE.LoadingManager();
 				manager.onProgress = function ( item, loaded, total ) {
 					for(s=0;s<maxOrb;s++) {
-						/*for(i=0;i<maxSat;i++) {
+						for(i=0;i<maxSat;i++) {
 							grupSat[s].add(sat3D[s][i]);	
-						}*/
+						}
 					}
 				};
 				var onProgress = function ( xhr ) {
@@ -1133,46 +1055,55 @@
 
 			function botoEliminarEstacio() {
 				numEstacions--;
-				scene.remove(estacio3D[numEstacions]);
-				scene2D.remove(estacio[numEstacions]);
+				meshTerra.remove(estacio3D[numEstacions]);
                 for(i=0;i<maxSat;i++) {
-                    scene2D.remove(link2D[i][numEstacions]);
-                    scene2D.remove(link3D[i][numEstacions]);
+                    scene.remove(link3D[i][numEstacions]);
                 }
-				scene2D.remove(proximitat[numEstacions]);				
+				app.stage.removeChild(puntEstacio[numEstacions]);	
+				proximitat[numEstacions].clear();
+
 			}
 
 			function botoEliminarZona() {
 				numZones--;
-				scene2D.remove(zona[numZones]);
-				scene2D.remove(zonaProx[numZones]);
+				app.stage.removeChild(puntZona[numZones]);	
+				zonaProx[numZones].clear();
 			}
 
 			function botoAfegirEstacio() {
-				if (numEstacions==1) {
-					alert("La nova estació s'ha ubicat provisionalment en el mapa.\nPots canviar la ubicació de les estacions arrossegant-les\namb el ratolí.")
-				}
+				alert("La nova estació s'ha ubicat provisionalment en el mapa.\nPots canviar la ubicació de les estacions arrossegant-les\namb el ratolí.")
 				angleLatEstacio[numEstacions]=10*Math.PI/180;
 				angleLonEstacio[numEstacions]=0;
 
-				estacio[numEstacions]= new THREE.Mesh( geometryEstacio, materialEstacio );
-				scene2D.add(estacio[numEstacions]);
 				estacio3D[numEstacions]= new THREE.Mesh( geometryEstacio3D, materialEstacio3D );
-				meshTerra.add(estacio3D[numEstacions]);		
+				meshTerra.add(estacio3D[numEstacions]);	
+
+				puntEstacio[numEstacions]=new PIXI.Sprite(PIXI.loader.resources["imatges/estacio_punt.png"].texture);
+				puntEstacio[numEstacions].index=numEstacions;
+				puntEstacio[numEstacions].interactive = true;
+				puntEstacio[numEstacions].buttonMode = true;
+				puntEstacio[numEstacions].on('pointerdown', onDragStartEst);
+				puntEstacio[numEstacions].on('pointermove', onDragMove);
+				puntEstacio[numEstacions].on('pointerup', onDragEndEst);
+				app.stage.addChild(puntEstacio[numEstacions]);	
 
 				mouEstacio(numEstacions);
 				numEstacions++;
 			}
 
 			function botoAfegirZona() {
-				if (numZones==1) {
-					alert("La nova zona d\'estudi s'ha ubicat provisionalment en el mapa.\nPots canviar la ubicació de les zones d\'estudi arrossegant-les\namb el ratolí.")
-				}
+				alert("La nova zona d\'estudi s'ha ubicat provisionalment en el mapa.\nPots canviar la ubicació de les zones d\'estudi arrossegant-les\namb el ratolí.")
 				angleLatZona[numZones]=45*Math.PI/180;
 				angleLonZona[numZones]=90*Math.PI/180;
 
-				zona[numZones]= new THREE.Mesh( geometryZona, materialZona );
-				scene2D.add(zona[numZones]);
+				puntZona[numZones]=new PIXI.Sprite(PIXI.loader.resources["imatges/zona_punt.png"].texture);
+				puntZona[numZones].index=numZones;
+				puntZona[numZones].interactive = true;
+				puntZona[numZones].buttonMode = true;
+				puntZona[numZones].on('pointerdown', onDragStartZona);
+				puntZona[numZones].on('pointermove', onDragMove);
+				puntZona[numZones].on('pointerup', onDragEndZona);
+				app.stage.addChild(puntZona[numZones]);	
 
 				mouZona(numZones);
 				numZones++;
@@ -1181,36 +1112,46 @@
 			function canviaRadiProximitat() {	
 				var distanciaZona=parametres.radiProximitat*1000/rTerra;			
 				for(j=0;j<numEstacions;j++) {		
-					scene2D.remove(proximitat[j]);
-					var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
-					var geometry = new THREE.Geometry();
+					proximitat[j].clear();
+					if (proximitat[j]==undefined) {
+						proximitat[j] = new PIXI.Graphics();
+					}
+					app.stage.addChild(proximitat[j]);
+					proximitat[j].position.set(centreMapaX,centreMapaY);	
+					proximitat[j].lineStyle(1, 0xFF0000);
+
 					for (i=0;i<=360;i+=stepAngle) {
 						azimuth=i*Math.PI/180;
-						var novCoord=novesCoordenades(angleLatEstacio[j],angleLonEstacio[j],azimuth,distanciaZona)
-						var xProximitat=centreX+novCoord.y*mAmplada/Math.PI;
-						var yProximitat=centreY+novCoord.x*mAmplada/Math.PI;
-						geometry.vertices.push(new THREE.Vector3(xProximitat, yProximitat, shiftZ) );
+						var novCoord=novesCoordenades(angleLatEstacio[j],angleLonEstacio[j],azimuth,distanciaZona);
+						if(i==0) {
+							proximitat[j].moveTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+						} else {
+							proximitat[j].lineTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+						}
 					}
-					proximitat[j] = new THREE.Line( geometry, material );
-					scene2D.add(proximitat[j]);
 				}
 			}
 
 			function canviaRadiZona() {	
 				var distanciaZona=parametres.radiZona*1000/rTerra;			
 				for(j=0;j<numZones;j++) {		
-					scene2D.remove(zonaProx[j]);
-					var material = new THREE.LineBasicMaterial( { color : 0xffc300} );
-					var geometry = new THREE.Geometry();
+					zonaProx[j].clear();
+					if (zonaProx[j]==undefined) {
+						zonaProx[j] = new PIXI.Graphics();
+					}
+					app.stage.addChild(zonaProx[j]);
+					zonaProx[j].position.set(centreMapaX,centreMapaY);	
+					zonaProx[j].lineStyle(1, 0x872D00);
+
 					for (i=0;i<=360;i+=stepAngle) {
 						azimuth=i*Math.PI/180;
-						var novCoord=novesCoordenades(angleLatZona[j],angleLonZona[j],azimuth,distanciaZona)
-						var xProximitat=centreX+novCoord.y*mAmplada/Math.PI;
-						var yProximitat=centreY+novCoord.x*mAmplada/Math.PI;
-						geometry.vertices.push(new THREE.Vector3(xProximitat, yProximitat, shiftZ) );
+						var novCoord=novesCoordenades(angleLatZona[j],angleLonZona[j],azimuth,distanciaZona);
+						if(i==0) {
+							zonaProx[j].moveTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+						} else {
+							zonaProx[j].lineTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+						}
 					}
-					zonaProx[j] = new THREE.Line( geometry, material );
-					scene2D.add(zonaProx[j]);
 				}
 			}
 
@@ -1218,58 +1159,59 @@
                 for(i=0;i<maxSat;i++) {
                     for(j=0;j<numEstacions;j++) {
                         scene.remove(link3D[i][j]);
-                        scene2D.remove(link2D[i][j]);
                     }
                 }
                 canviaParametres();
             }
 
 			function mouEstacio(numEst) {
-				estacio[numEst].position.x=centreX+angleLonEstacio[numEst]*mAmplada/Math.PI;
-				estacio[numEst].position.y=centreY+angleLatEstacio[numEst]*mAmplada/Math.PI;
-				estacio[numEst].position.z=shiftZ;
-
 				estacio3D[numEst].position.x=Math.sin(Math.PI/2-angleLatEstacio[numEst])*Math.cos(angleLonEstacio[numEst]);
 				estacio3D[numEst].position.y=Math.sin(Math.PI/2-angleLatEstacio[numEst])*Math.sin(angleLonEstacio[numEst]);
 				estacio3D[numEst].position.z=Math.cos(Math.PI/2-angleLatEstacio[numEst]);
 
-				//ZONA DE PROXIMITAT
-
-				scene2D.remove(proximitat[numEst]);
-				var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
 				var distanciaZona=parametres.radiProximitat*1000/rTerra;
 
-				var geometry = new THREE.Geometry();
+				puntEstacio[numEst].x=centreMapaX+midaMapa*angleLonEstacio[numEst]/Math.PI-radiPunt;
+				puntEstacio[numEst].y=centreMapaY-midaMapa*angleLatEstacio[numEst]/Math.PI-radiPunt;
+				if (proximitat[numEst]==undefined) {
+					proximitat[numEst] = new PIXI.Graphics();
+				}
+				app.stage.addChild(proximitat[numEst]);
+				proximitat[numEst].position.set(centreMapaX,centreMapaY);	
+				proximitat[numEst].lineStyle(1, 0xFF0000);	
+
 				for (i=0;i<=360;i+=stepAngle) {
 					azimuth=i*Math.PI/180;
 					var novCoord=novesCoordenades(angleLatEstacio[numEst],angleLonEstacio[numEst],azimuth,distanciaZona)
-					var xProximitat=centreX+novCoord.y*mAmplada/Math.PI;
-					var yProximitat=centreY+novCoord.x*mAmplada/Math.PI;
-					geometry.vertices.push(new THREE.Vector3(xProximitat, yProximitat, shiftZ) );
-				}
-				proximitat[numEst] = new THREE.Line( geometry, material );
-				scene2D.add(proximitat[numEst]);
+					if(i==0) {
+						proximitat[numEst].moveTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+					} else {
+						proximitat[numEst].lineTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+					}
+				}			
 			}
 
 			function mouZona(numZona) {
-				zona[numZona].position.x=centreX+angleLonZona[numZona]*mAmplada/Math.PI;
-				zona[numZona].position.y=centreY+angleLatZona[numZona]*mAmplada/Math.PI;
-				zona[numZona].position.z=shiftZ;
-
-				scene2D.remove(zonaProx[numZona]);
-				var material = new THREE.LineBasicMaterial( { color : 0xffc300 } );
 				var distanciaZona=parametres.radiZona*1000/rTerra;
 
-				var geometry = new THREE.Geometry();
+				puntZona[numZona].x=centreMapaX+midaMapa*angleLonZona[numZona]/Math.PI-radiPunt;
+				puntZona[numZona].y=centreMapaY-midaMapa*angleLatZona[numZona]/Math.PI-radiPunt;
+				if (zonaProx[numZona]==undefined) {
+					zonaProx[numZona] = new PIXI.Graphics();
+				}
+				app.stage.addChild(zonaProx[numZona]);
+				zonaProx[numZona].position.set(centreMapaX,centreMapaY);	
+				zonaProx[numZona].lineStyle(1, 0x872D00);
+
 				for (i=0;i<=360;i+=stepAngle) {
 					azimuth=i*Math.PI/180;
 					var novCoord=novesCoordenades(angleLatZona[numZona],angleLonZona[numZona],azimuth,distanciaZona)
-					var xProximitat=centreX+novCoord.y*mAmplada/Math.PI;
-					var yProximitat=centreY+novCoord.x*mAmplada/Math.PI;
-					geometry.vertices.push(new THREE.Vector3(xProximitat, yProximitat, shiftZ) );
+					if(i==0) {
+						zonaProx[numZona].moveTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+					} else {
+						zonaProx[numZona].lineTo(midaMapa*novCoord.y/Math.PI,-midaMapa*novCoord.x/Math.PI);
+					}
 				}
-				zonaProx[numZona] = new THREE.Line( geometry, material );
-				scene2D.add(zonaProx[numZona]);
 			}
 
 			function distancia(lat1,lat2,lon1,lon2) {			 	
@@ -1316,35 +1258,51 @@
 
   					row_sen = [];
 
+					var nf = Intl.NumberFormat();
+
   					for(var i=0; i<lines.length; i++) {
 	  					row_sen[i]=lines[i].split("\t");
 	  					msgDiv +="<tr>";
 	  					if (i>0){
 	  						msgDiv +="<td style='border: 1px solid #cacaca; padding:3px;'><input type='checkbox' class='sensor' name='sensor_"+i+"' id='sensor_"+i+"' onchange='calPotencia()'/></td>";		
 	  					} else {
-	  						msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; background-color: #cacaca'>Sel</td>"
+	  						msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'></td>"
 	  					}
-  						for(var c=0; c<row_sen[i].length-1; c++) {	  		
+  						for(var c=0; c<row_sen[i].length; c++) {	  		
   							var senVal=row_sen[i][c];
-  							if (c==100){
-	  							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
-	  						} else {
-	  							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"</td>";
-	  						}
+							if(i==0) {
+								msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; text-align:center'><b>"+senVal+"</b></td>";
+							} else {
+								if(c==3 || c==4) {
+									msgDiv +="<td style='border: 1px solid #cacaca; text-align: right; padding:3px;'>"+nf.format(senVal)+"</td>";
+								} else {
+									if(c==5) {
+										msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' height='100' class='center'></td>";
+									} else {
+										if (c==100){
+											msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
+										} else {
+											msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"</td>";
+										}
+									}
+								}
+						  }
   						}
   						var senVal=row_sen[i][c];  						
-  						msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
+  						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
   						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><button id='"+row_sen[i][1].substring(1,row_sen[i][1].length-1)+"'>Més informació</button></td>";  							
 	  					msgDiv +="</tr>";  						
   					}
     				msgDiv +="</table>";
     				msgDiv +="<hr>";    
     				msgDiv +="<table style='width:100%'>";
-		        	msgDiv +="<tr id='potSensors'><td style='width:50%; background-color: #cacaca'>Potencia necessaria: 0 w</td><td>Planells solars: 0</td></tr>";
-    				msgDiv +="<tr id='disSensors'><td style='width:50%; background-color: #cacaca'>Capacitat emmagatzematge necessari: 0Gb </td><td>Discos: 0</td></tr>";    				    				
+		        	msgDiv +="<tr id='potSensors'><td style='width:50%; background-color: #cacaca'>Potència necessària (W): 0</td>";//<td style='width:50%; background-color: #cacaca'>Panells solars : 1</td></tr>";
+    				msgDiv +="<tr id='disSensors'><td style='width:50%; background-color: #cacaca'>Ocupació d'espai de disc (kb/s): 0</td>";//<td style='width:50%; background-color: #cacaca'>Unitats de disc : 1</td></tr>";    				    				
     				msgDiv +="</table>";    				
 
+					$("#modalHeader").html("Sensors que incorpora el satèl·lit");
 					$("#missatge").html(msgDiv);
+					$("#finestraInfo").css({"visibility":"visible"});
 					$("#finestraInfo").modal('show');		    		
 				}
 			}	
@@ -1370,32 +1328,44 @@
 				});
 			}
 
-
-
 			function botoInfoMissions() {			 	
 				var msgDiv="<table style='width:100%'>";
 				for(var i=0; i<row_mis.length; i++) {
 					msgDiv +="<tr>";
 					for(var c=0; c<row_mis[i].length; c++) {	  		
-						var senVal=row_mis[i][c];				
-						if (c==100){
-							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
-						} else {
-							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"</td>";
+						var senVal=row_mis[i][c];	
+						if(i==0) {
+							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; text-align:center'><b>"+senVal+"</b></td>";
+						}	else {
+							if (c==100){
+								msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
+							} else {
+								if (c==3) {	
+									msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' height='100' class='center'></td>";						
+								} else {	
+									if (c==4) {
+										msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>";
+										var enll=senVal.split(',');
+										for (ii=0;ii<enll.length;ii++){
+											msgDiv +="<br><a href='"+enll[ii]+"' target='_blank'>Enllaç "+parseInt(ii+1)+"</a>";
+										}
+										msgDiv +="</td>";
+										//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><a href='"+senVal+"' target='_blank'>Enllaç</a></td>";	
+									} else {
+										msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"</td>";
+									}
+								}
+							}
 						}
 					}
-					var senVal=row_mis[i][c];  									
-					msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
-					msgDiv +="</tr>";  						
 				}
 				msgDiv +="</table>";
 				$("#modalHeader").html("Relació de missions");
 				$("#missatge").html(msgDiv);
-				$("#finestraInfo").modal('show');		    		
+				$("#finestraInfo").css({"visibility":"visible"});
+				$("#finestraInfo").modal('show');	
+    		
 			}
-
-
-
 
 			function botoSelMissio() {	
 				nM=0;
@@ -1425,11 +1395,10 @@
 				msgDiv +="</div>";
 				$("#modalHeader").html("Missió a desenvolupar: <br><br><p class='descripcio'>"+row_mis[nM][1])+"</p>";	
 				$("#missatge").html(msgDiv);
+				$("#finestraInfo").css({"visibility":"visible"});
 				$("#finestraInfo").modal('show');	
 				$("#selMissio").html("Visualitzar dades de la missió");
 			}	
-
-
 
 			function botoInfoParametres() {	
 
@@ -1448,58 +1417,74 @@
 					var lines=csv.split("\n");
 
   					row_sen = [];
+					//var nf = Intl.NumberFormat();
 
   					for(var i=0; i<lines.length; i++) {
 	  					row_sen[i]=lines[i].split("\t");
 	  					msgDiv +="<tr>";
-  						for(var c=0; c<row_sen[i].length-1; c++) {	
+  						for(var c=0; c<row_sen[i].length-2; c++) {	
   							var senVal=row_sen[i][c];
   							var estil="";
   							if (i==0){
   								var estil="background-color:#cacaca;";
   							} 
-  							if (c==100){
-	  							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; "+estil+"'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
-	  						} else {
-	  							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; "+estil+"'>"+senVal+"</td>";
-	  						}
+							if (c==100){
+								msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; "+estil+"'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
+							} else {
+								msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; "+estil+"'>"+senVal+"</td>";
+							}
   						}
   						var senVal=row_sen[i][c];  						
-  						msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
+  						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
 	  					msgDiv +="</tr>";  						
   					}
     				msgDiv +="</table>";
 					$("#modalHeader").html("Paràmetres configurables del simulador");	
 					$("#missatge").html(msgDiv);
+					$("#finestraInfo").css({"visibility":"visible"});
 					$("#finestraInfo").modal('show');		    		
 				}
 			}	
 
-
-
-
 			function calPotencia(){
-	   			potSensors =0;
-	   			disSensors =0;			   		
+				totalPot=0;
+				totalDis=0;
+				for (var s=1; s<row_sen.length; s++) {
+					totalPot +=parseFloat(row_sen[s][3]);
+					totalDis +=parseFloat(row_sen[s][4]);	
+	   			}	
+
+	   			potSensors = 0;
+	   			disSensors = 0;			   		
 	   			for (var s=1; s<row_sen.length; s++) {
 	   				if ($("#sensor_"+s).prop("checked")){
-	   					potSensors +=parseFloat(row_sen[s][3].substring(1,row_sen[s][3].length-1));
-	   					disSensors +=parseFloat(row_sen[s][4].substring(1,row_sen[s][4].length-1));			   			
+	   					//potSensors +=parseFloat(row_sen[s][3].substring(1,row_sen[s][3].length-1));
+	   					//disSensors +=parseFloat(row_sen[s][4].substring(1,row_sen[s][4].length-1));	
+						potSensors +=parseFloat(row_sen[s][3]);
+	   					disSensors +=parseFloat(row_sen[s][4])
 	   				}
-	   			}			   		
-	   			var nPanells=Math.round(Math.round(potSensors*10)/1000);ensors
-	   			var nDiscs=Math.round(Math.round(disSensors*10)/1000);ensors
-	        	$('#potSensors').html("<td>Potencia necessaria: "+potSensors+"</td><td>Panells soensorslars: "+nPanells+"</td>")
-				$('#disSensors').html("<td>Capacitat emmagatzematge necessari: "+disSensors+"</tdensors><td>Discos: "+nDiscs+"</td>");
-        		folder4.__controllers[0].setValue(nPanells);				
-        		folder4.__controllers[1].setValue(nDiscs);				        		
+	   			}				   		
+
+				var nPanells=Math.ceil(potSensors/totalPot*5);
+	   			var nDiscs=Math.ceil(disSensors/totalDis*5);
+				if (nPanells==0) {nPanells=1;}
+				if (nDiscs==0) {nDiscs=1;}
+				var nf = Intl.NumberFormat();
+	        	$('#potSensors').html("<td style='width:50%; background-color: #cacaca'>Potència necessària (W): "+nf.format(potSensors)+"</td>");//<td style='width:50%; background-color: #cacaca'>Panells solars : "+nPanells+"</td>")
+				$('#disSensors').html("<td style='width:50%; background-color: #cacaca'>Ocupació d'espai de disc (kb/s): "+nf.format(disSensors)+"</td>");//<td style='width:50%; background-color: #cacaca'>Unitats de disc : "+nDiscs+"</td>");
+        		//folder4.__controllers[0].setValue(nPanells);				
+        		//folder4.__controllers[1].setValue(nDiscs);				        		
 			}	
 
 			function botoInfoSatelit() { 	
-				var msgDiv="<iframe src='https://edumet.cat/areatac/zenit/visor-zenit.html' height='600' width='75%'></iframe>" 			
+				var msgDiv="<iframe src='https://edumet.cat/areatac/zenit/visor-zenit.html' height='600' width='75%'></iframe>" 
+				$("#modalHeader").html("Informació del satèl·lit");			
 				$("#missatge").html(msgDiv);
+				$("#finestraInfo").css({"visibility":"visible"});
 				$("#finestraInfo").modal('show');		    		
-			}				
+			}
+
+				
 		</script>
 	</body>
 </html>
