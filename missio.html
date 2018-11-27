@@ -31,6 +31,7 @@
    				background-color: white;
    				width: 75% !important;
 			}
+
 			.modal-header{
    				background-color: rgb(224, 236, 247);
 			}
@@ -47,8 +48,20 @@
 				display: block;
 				margin-left: auto;
 				margin-right: auto;
-			}		
+			}	
+			.divMapa {
+				float:left;
+				border:1px solid #FFFFFF;
+				width:400px;
+			}	
 		</style>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+		integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+		crossorigin=""/>
+		<!-- Make sure you put this AFTER Leaflet's CSS -->
+		<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+		integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+		crossorigin=""></script>
 	</head>
 	<body>		
 		
@@ -59,16 +72,6 @@
 			<div id="content2">
 			</div>
 		</div>
-		
-		 <div style="height: 300px; visibility: hidden">
-			<canvas id="cnvSil" width=512 height=256></canvas>
-			<canvas id="cnvFis" width=512 height=256></canvas>
-		</div>
-		<!--
-		<div style="clear:both; visibility: hidden">
-			<button type="button" onclick="llenSat()">Inici captura</button> 
-		</div>-->
-
 
 		<div id="finestraInfo" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" width='90%' style="visibility: hidden">
 			<div class="modal-dialog">
@@ -89,9 +92,14 @@
 			<div class="modal-dialog">
 				<div class="modal-header">
 					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-					<h3 id="modalHeader">Exploració de la zona</h3>
+					<h3 id="headerExploracio"></h3>
 				</div>
-				<div class="modal-body" id="missatgeExploracio">					
+				<div class="modal-body" id="missatgeExploracio">						
+					<div id="mapa1" class="divMapa"></div>	
+					<div id="mapa2" class="divMapa"></div>
+					<div id="mapa3" class="divMapa"></div>	
+					<div id="mapa4" class="divMapa"></div>	
+					<div id="mapa5" class="divMapa"></div>					
 				</div>
 				<div class="modal-footer">
 					<button class="btn" data-dismiss="modal" aria-hidden="true">Tancar</button>
@@ -149,6 +157,11 @@
 			var puntZona=[];
 			var tros=[];
 			var appExploracio;
+			var mapa=[];
+			var capa=[];
+			var sensor=[];
+			var sensorsIniciats=false;
+			var numSensors=0;
 
 			// CONSTANTS TERRA            
             const MU=398694790080000; // G * massa de la Terra, S.I.
@@ -279,7 +292,7 @@
 				folder5.add( parametres, "infoSatelit").name("Satèl·lit");		
 				folder5.add( parametres, "infoMissions").name("Missions");						
 				folder5.add( parametres, "selMissio").name("Selecciona missió");					
-				//folder5.open();
+				//folder5.open();			
 			}
 
 			init();
@@ -481,7 +494,7 @@
 								tros[i][j].buttonMode = true;
 								tros[i][j].on('pointerdown', function(e) {
 												var i=(this.position.x+midaMapa-centreMapaX)/midaQuadre;
-												var j=(this.position.y-midaMapa/2-centreMapaY)/midaQuadre;
+												var j=midaQuadre+(this.position.y-midaMapa/2-centreMapaY)/midaQuadre;
 												mostraTros(i,j);
 											});
 								app.stage.addChild(tros[i][j]);
@@ -533,11 +546,15 @@
 				window.addEventListener( 'resize', onWindowResize, false );
 				window.addEventListener( 'focus', onFocus, false );
 
+				for(k=1;k<6;k++) {
+					//mapa[k] = L.map('mapa'+k,{zoomControl:false,scrollWheelZoom:false,dragging:false});
+					mapa[k] = L.map('mapa'+k,{scrollWheelZoom:false,dragging:false});
+				}	
 				initGUI();
 			}
 
 			function mostraTros(i,j) {
-				if(appExploracio==undefined) {
+				/*if(appExploracio==undefined) {
 					appExploracio = new PIXI.Application({width: 512, height: 512});
 					appExploracio.renderer.backgroundColor = 0x000000;
 					contenidor = document.getElementById('missatgeExploracio');
@@ -547,9 +564,113 @@
 				texture = new PIXI.Texture(baseHD, rectangle);
 				exploracio = new PIXI.Sprite(texture);
 				exploracio.setTransform(0,0,4,4);
-				appExploracio.stage.addChild(exploracio);
+				appExploracio.stage.addChild(exploracio);*/
+
 				$("#finestraExploracio").css({"visibility":"visible"});
 				$("#finestraExploracio").modal('show');
+				for(k=1;k<6;k++) {
+					$("#mapa"+k).css({"height":"400px"});
+				}
+				
+				var latitud=90-180/midaQuadre*j-midaQuadre/2;
+				var longitud=-180+360/(midaQuadre*2)*i+midaQuadre/2;
+				$("#headerExploracio").html("Exploració de la zona (latitud:"+latitud+"°, longitud:"+longitud+"°)");
+		
+				for(k=1;k<6;k++) {
+					mapa[k].eachLayer(function (layer) {
+						mapa[k].removeLayer(layer);
+					});
+					$("#mapa"+k).hide();
+					mapa[k].setView([latitud, longitud], 5);
+				}
+
+				var mapesOcupats=0;
+				ocupaMapa(1,0,latitud,longitud); // Visible
+				mapesOcupats++;
+				if (sensor[1]||sensor[3]||sensor[5]) { // SAR, GNSS-R, LIDAR
+					mapesOcupats++;
+					ocupaMapa(mapesOcupats,1,latitud,longitud);
+				}
+				if (sensor[2]) { // Radiometer
+					mapesOcupats++;
+					ocupaMapa(mapesOcupats,2,latitud,longitud);
+				}
+				if (sensor[4]) { // GNSS-RO
+					mapesOcupats++;
+					ocupaMapa(mapesOcupats,3,latitud,longitud);
+				}
+				if (sensor[6]) { // HyperSpectral
+					mapesOcupats++;
+					ocupaMapa(mapesOcupats,4,latitud,longitud);
+				}
+
+				$('#finestraExploracio').on('shown.bs.modal', function(){
+					setTimeout(function() {
+						for(k=1;k<6;k++) {
+							mapa[k].invalidateSize();
+						}                  
+					}, 2);
+				});
+			}
+
+			function ocupaMapa(numMapa,sensor,latitud,longitud) {
+				switch(sensor) {
+				case 0: // Visible
+					capa[numMapa] =  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+						attribution: 'Tiles &copy; Esri_WorldImagery'
+					});
+					capa[1].addTo(mapa[1]);
+					break;
+				case 1: // SAR, GNSS-R, LIDAR
+					capa[numMapa] = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/SRTM_Color_Index/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+						attribution: 'GIBS / NASA / SRTM_Color_Index',
+						bounds: [[latitud-30, longitud-30], [latitud+30, longitud+30]],
+						minZoom: 1,
+						maxZoom: 12,
+						format: 'png',
+						time: '',
+						tilematrixset: 'GoogleMapsCompatible_Level'
+					});
+					capa[numMapa].addTo(mapa[numMapa]);					
+					break;
+				case 2: // Radiometer
+					capa[numMapa] = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/SMAP_L4_Soil_Temperature_Layer_1/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+						attribution: 'GIBS / NASA / Soil_Temperature',
+						bounds: [[latitud-30, longitud-30], [latitud+30, longitud+30]],
+						minZoom: 1,
+						maxZoom: 6,
+						format: 'png',
+						time: '',
+						tilematrixset: 'GoogleMapsCompatible_Level'
+					});
+					capa[numMapa].addTo(mapa[numMapa]);
+					break;
+				case 3 : // GNSS-RO
+					capa[numMapa] = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/Particulate_Matter_Below_2.5micrometers_2010-2012/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+						attribution: 'GIBS / NASA / Particulate_Matter_Below_2.5micrometers',
+						bounds: [[latitud-30, longitud-30], [latitud+30, longitud+30]],
+						minZoom: 1,
+						maxZoom: 7,
+						format: 'png',
+						time: '',
+						tilematrixset: 'GoogleMapsCompatible_Level'
+					});
+					capa[numMapa].addTo(mapa[numMapa]);
+					break;
+				case 4 : // HyperSpectral
+					capa[numMapa] = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/MODIS_Terra_NDVI_8Day/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+						attribution: 'GIBS / NASA / MODIS_Terra_NDVI_8Day',
+						bounds: [[latitud-30, longitud-30], [latitud+30, longitud+30]],
+						minZoom: 1,
+						maxZoom: 9,
+						format: 'png',
+						time: '2018-11-18',
+						tilematrixset: 'GoogleMapsCompatible_Level'
+					});
+					capa[numMapa].addTo(mapa[numMapa]);
+					break;
+				} 
+				$("#mapa"+numMapa).show();
 			}
 
 			function onFocus(){
@@ -727,7 +848,7 @@
                                 dintreZona[i][j]=true;
 								var numTrosX=Math.floor(((puntSat[0].x + radiPunt - centreMapaX) + midaMapa) / midaQuadre);
 								var numTrosY=Math.floor(((puntSat[0].y + radiPunt - centreMapaY) + midaMapa/2) / midaQuadre);
-								if (tros[numTrosX][numTrosY].visible==false) {
+								if (tros[numTrosX][numTrosY].visible==false && nivellBateria>0 && nivellDiscs>0) {
 									tros[numTrosX][numTrosY].visible=true;
 								}
                             }
@@ -1260,7 +1381,7 @@
 
 					var nf = Intl.NumberFormat();
 
-  					for(var i=0; i<lines.length; i++) {
+					for(var i=0; i<lines.length; i++) {
 	  					row_sen[i]=lines[i].split("\t");
 	  					msgDiv +="<tr>";
 	  					if (i>0){
@@ -1288,11 +1409,12 @@
 								}
 						  }
   						}
-  						var senVal=row_sen[i][c];  						
+  						//var senVal=row_sen[i][c];  						
   						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
   						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><button id='"+row_sen[i][1].substring(1,row_sen[i][1].length-1)+"'>Més informació</button></td>";  							
 	  					msgDiv +="</tr>";  						
-  					}
+					}		  
+
     				msgDiv +="</table>";
     				msgDiv +="<hr>";    
     				msgDiv +="<table style='width:100%'>";
@@ -1303,7 +1425,18 @@
 					$("#modalHeader").html("Sensors que incorpora el satèl·lit");
 					$("#missatge").html(msgDiv);
 					$("#finestraInfo").css({"visibility":"visible"});
-					$("#finestraInfo").modal('show');		    		
+					$("#finestraInfo").modal('show');	
+
+					munSensors=lines.length-1;
+					if (sensorsIniciats) {
+						for(var i=1; i<lines.length; i++) {
+							if (sensor[i]) {
+								console.log("[id='sensor_"+i+"']");
+								$("[id='sensor_"+i+"']").prop("checked",true);
+							}
+						}
+					}	
+					sensorsIniciats=true;    		
 				}
 			}	
 
@@ -1363,8 +1496,7 @@
 				$("#modalHeader").html("Relació de missions");
 				$("#missatge").html(msgDiv);
 				$("#finestraInfo").css({"visibility":"visible"});
-				$("#finestraInfo").modal('show');	
-    		
+				$("#finestraInfo").modal('show');	    		
 			}
 
 			function botoSelMissio() {	
@@ -1393,7 +1525,7 @@
 					//msgDiv +="<h3>Imatges</h3>";
 					msgDiv +="<div><img src='"+row_mis[nM][3]+"' style='max-height:50rem!important; width:100%!important'/></div>";
 				msgDiv +="</div>";
-				$("#modalHeader").html("Missió a desenvolupar: <br><br><p class='descripcio'>"+row_mis[nM][1])+"</p>";	
+				$("#modalHeader").html("Missió a desenvolupar: <br><br><p class='descripcio'>"+row_mis[nM][1]+"</p>");	
 				$("#missatge").html(msgDiv);
 				$("#finestraInfo").css({"visibility":"visible"});
 				$("#finestraInfo").modal('show');	
@@ -1461,8 +1593,11 @@
 	   					//potSensors +=parseFloat(row_sen[s][3].substring(1,row_sen[s][3].length-1));
 	   					//disSensors +=parseFloat(row_sen[s][4].substring(1,row_sen[s][4].length-1));	
 						potSensors +=parseFloat(row_sen[s][3]);
-	   					disSensors +=parseFloat(row_sen[s][4])
-	   				}
+						disSensors +=parseFloat(row_sen[s][4]);
+						sensor[s]=true;   
+	   				} else {
+						sensor[s]=false;
+					}
 	   			}				   		
 
 				var nPanells=Math.ceil(potSensors/totalPot*5);
@@ -1482,9 +1617,7 @@
 				$("#missatge").html(msgDiv);
 				$("#finestraInfo").css({"visibility":"visible"});
 				$("#finestraInfo").modal('show');		    		
-			}
-
-				
+			}				
 		</script>
 	</body>
 </html>
