@@ -101,7 +101,7 @@
 		var ambWebgl;
 		var temps, previousTime, interval; // en segons
 		var enPausa = true; // animació
-		var enTranslacio = false; // Translació
+		var enTranslacio = true; // Translació
 		var ambLlum = true; // fora de la zona d'ombra
 		var vectorLlum; // vector amb origen al Sol i final a la Terra (unitari)
 		var botoIniciar;
@@ -122,13 +122,17 @@
 			GUIContainer.appendChild(gui.domElement);
 			folder1 = gui.addFolder("DATA");
 			folder1.add(parametres, "mesDelAny", { Gener    : 1, Febrer: 2, Març: 3, Abril: 4, Maig: 5, Juny: 6, Juliol: 7, Agost: 8, Setembre: 9, Octubre: 10, Novembre: 11, Desembre: 12 }).name("Mes").onChange(escullMes);;
-			cursorDia = folder1.add(parametres, "diaDelMes", 1, 31, 1).name("Dia del mes").onChange(escullDia);			
+			cursorDia = folder1.add(parametres, "diaDelMes", 1, 31, 1).name("Dia del mes").onChange(escullDia);	
+			folder11 = gui.addFolder("LOCALITZACIÓ");
+			folder11.add(parametres, "latitud", -90, 90, 1).name("Latitud (&deg)").onChange(canviaLloc);	
+			folder11.add(parametres, "longitud", -180, 180, 1).name("Longitud (&deg)").onChange(canviaLloc);				
+			folder11.add(parametres, "radiacio", 0, 1000, 10).name("Radiació Sol (W/m&sup2)");		
 			folder2 = gui.addFolder("VISUALITZACIÓ");
 			folder2.add(parametres, "paralels").name("Paral·lels terrestres").onChange(enParalels);
 			folder2.add(parametres, "plans").name("Plans de referència").onChange(enPlans);
 			folder2.add(parametres, "incidencia").name("Incidència solar").onChange(enIncidencia);
 			folder3 = gui.addFolder('SIMULACIO');
-			folder3.add(parametres, "translacio", { "Rotació de la Terra": false,"Translació de la Terra":true}).name("Moviment").onChange(botoTranslacio);;
+			folder3.add(parametres, "translacio", { "Translació de la Terra": true,"Rotació de la Terra":false}).name("Moviment").onChange(botoTranslacio);
 			//folder3.add(parametres, "velAnimacio", 1, 10, 1).name("Velocitat animació");
 			botoIniciar = folder3.add(parametres, "pausa");
 			botoIniciar.name("I N I C I A R");
@@ -137,6 +141,7 @@
 			estil.textAlign = 'center';
 			estil.width = '100%';
 			folder1.open();
+			folder11.open();
 			folder2.open();
 			folder3.open();
 		}
@@ -147,12 +152,15 @@
 				mapa3D: 'atlas1.jpg', // fitxer de textura del mapa
 				velAnimacio: 5, // velocitat de l'animació
 				pausa: botoPausa, // botó per pausar o reprendre la simulació
-				translacio: false,
+				translacio: true,
 				paralels: true,
 				plans: true,
 				incidencia: true,
 				diaDelMes: 1,
-				mesDelAny: 1
+				mesDelAny: 1,
+				radiacio: 0,
+				latitud: 41,
+				longitud: 2
 			};
 			container2 = document.getElementById('content2');
 			container1 = document.getElementById('content1');
@@ -354,6 +362,12 @@
 			grupMon.setRotationFromAxisAngle(new THREE.Vector3(1, 0, 0), -angleTerra);
 			scene.add(grupMon);
 
+			// LLOC
+			var materialLloc = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+			var geometryLloc = new THREE.SphereGeometry(0.03);
+			lloc = new THREE.Mesh(geometryLloc, materialLloc);
+            canviaLloc();
+
 			// TERRA
 			var loader3D = new THREE.TextureLoader();
 			loader3D.load('imatges/' + parametres.mapa3D, function (texture) {
@@ -362,6 +376,7 @@
 				geometryTerra.rotateX(Math.PI / 2);
 				var materialTerra = new THREE.MeshLambertMaterial({ map: texture, overdraw: true });
 				meshTerra = new THREE.Mesh(geometryTerra, materialTerra);
+				meshTerra.add(lloc);
 				meshTerra.castShadow = true;
 				grupMon.add(meshTerra);
 			});
@@ -428,6 +443,15 @@
 		function onFocus() {
 			canviaParametres();
 		}
+
+		function canviaLloc() {
+			lloc.position.x = Math.cos(parametres.latitud * Math.PI/180) * Math.cos(parametres.longitud * Math.PI/180);
+			lloc.position.y = Math.cos(parametres.latitud * Math.PI/180) * Math.sin(parametres.longitud * Math.PI/180);
+			lloc.position.z = Math.sin(parametres.latitud * Math.PI/180);
+			
+		}
+
+
 		function canviaDia() {
 			scene.remove(directionalLight);
 			//var angleSol=-2*Math.PI*(diaActual+9)/365-Math.PI/2;
@@ -599,13 +623,22 @@
 				canviDiaAutomatic = false;
 				canviaDia();
 				var textDia = parametres.diaDelMes + " " + nomDelMes[parametres.mesDelAny - 1];
-				$("#info").text(textDia);
+				$("#info").text(textDia)
 			}
 			if (meshTerra != null) {
 				var quaternionZ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), omega * temps);
 				meshTerra.quaternion.copy(quaternionZ);
 			}
 
+			var vectorLlocLocal = new THREE.Vector3(lloc.position.x,lloc.position.y,lloc.position.z);
+			var vectorLloc = vectorLlocLocal.applyMatrix4(meshTerra.matrixWorld).normalize();
+			var laRadiacio = - 1000 * vectorLloc.dot(vectorLlum);
+			if (laRadiacio >= 0) {
+				parametres.radiacio = laRadiacio;
+			} else {
+				parametres.radiacio = 0;
+			}
+			folder11.updateDisplay();
 			camera1.aspect = window.innerWidth / window.innerHeight * ampleLeft;
 			camera.aspect = window.innerWidth / window.innerHeight * ample;
 			camera2D.aspect = window.innerWidth / window.innerHeight * ampleRight;
