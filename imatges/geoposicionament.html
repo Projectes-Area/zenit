@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ca">
+	<head>
+		<title>GPS</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000;	margin: 0 0 0 0; padding: 0 0 0 0; border: none; cursor: default;
+			}
+			#container {
+				width: 100%; height: 100vh;	min-width: 640px; min-height: 360px; position: relative; overflow: hidden; z-index: 0;
+			}
+			#dat {
+				user-select: none; position: absolute; left: 0;	top: 0;	z-Index: 200;
+			}
+		</style>
+	</head>
+	<body>		
+		
+		<div id="container"></div>
+		<div id="dat"></div>
+		<script src="https://code.jquery.com/jquery-1.12.4.js"></script>     
+		
+		<script src="../three.js/build/three.min.js"></script>
+		<script src="../three.js/examples/js/renderers/Projector.js"></script>
+		<script src="../three.js/examples/js/renderers/CanvasRenderer.js"></script>
+		<script src="../three.js/examples/js/libs/dat.gui.min.js"></script>
+		<script src="../three.js/examples/js/controls/OrbitControls.js"></script>
+		<script src="../three.js/examples/js/loaders/OBJLoader.js"></script>
+		<script src="../three.js/examples/js/Detector.js"></script>
+
+		<script>
+			var container, camera, camera2D, scene, scene2D, renderer;
+			var meshTerra, llegenda, orbita, tauler, mapa2D;
+			var omegaSat, periodeSat, aOrbita, bOrbita, eOrbita, pOrbita;
+			var angleInclinacio, angleEscombrat;
+			var vEsferic;
+			var geometryEstacio, materialEstacio, geometryEstacio3D, materialEstacio3D, materialGPS;
+			var textPeriode;
+            var grupMon;
+			var folder1, botoIniciar, estil;
+			var quaternionTerra=[];
+			var estacio=[];
+			var estacio3D=[];
+			var proximitat=[];
+			var numMove;
+            var sat2D=[];
+			var label2D=[];
+			var gps2D=[];
+            var sat3D=[];
+			var grupSat=[];
+			var orbita=[];
+			var materialOrbita=[];
+
+			// CONSTANTS TERRA            
+            const MU=398694790080000; // G * massa de la Terra, S.I.
+			const rTerra=6458428; // radi de l'esfera terrestre, metres
+			const segonsDia=23*3600+56*60+4; // nombre de segons que té un dia
+			const omega=2*Math.PI/segonsDia; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
+            const angleTerra=0 //23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
+
+			// CONSTANTS SIMULACIÓ
+			const shiftCount=1;	// al cap de quants renderings s'agafa un punt de la trajectòria
+			const midaSatelit=0.04; // escala d'ampliació del OBJ del satèl·lit
+            const centreX=0; // origen en X del mapa 2D de la Terra
+			const centreY=-1.75; // origen en Y del mapa 2D de la Terra
+			const centreX2=0; // origen en X de la vista radar
+			const centreY2=0.7; // origen en Y de la vista radar
+			const mAmplada=1.5; // amplada del mapa 2D de la Terra
+			const mAlsada=mAmplada/2; // alçada del mapa 2D de la Terra
+			const shiftZ=0.01; // distància entre objectes en la coordenada Z en l'escena 2D. 0,mapa,tauler. 1,sat2D, estacions, zones, proximitats, trajectòria, gràfiques i llegenda
+			const stepAngle=1; // al cap de quants graus es considera un nou punt en la zona de proximitat
+			const perCent2D=0.3; // tant per u que ocupa l'escena 2D de la dreta
+			const shiftLabelX=0.44; // distància entre el satèl·lit i la seva etiqueta en la vista radar
+			const shiftLabelY=-0.12; // distància entre el satèl·lit i la seva etiqueta en la vista radar
+			const factorVelocitat=0.05; // factor per alentir la simulació
+			const satMin=1; // distància mínima entre el centre de la Terra i el Satèl·lit (en referència a 1, radi de la Terra)
+			const colorSat=[0xff8000,0x00ff00,0x0000ff,0xff0000,0xffff00,0x808000]; // colors d'òrbites i satèl·lits
+			const factorGps=0.8; // factor per adaptar distàncies al radi de l'horitzó en la vista radar
+			const lletra=["A","B","C","D","E","F"]; // etiquetes de les òrbites
+			const maxSat=9; // nombre màxim de satèl·lits
+			const maxOrb=6; // nombre màxim d'òrbites
+			
+            // VARIABLES DE SIMULACIÓ	
+			var ambWebgl; // el navegador suporta WebGL			
+            var temps, previousTime, interval; // en segons
+			var count; // comptador de punts en la trajectòria
+			var steps; // comptador de renderings
+			var enPausa = true; // animació
+			var dintre; // dins de la zona de proximitat
+			var diaSencer; // ha transcorregut més d'un dia sencer (boolean)
+			var vectorLlum; // vector amb origen al Sol i final a la Terra (unitari)
+			var longitudAnterior; // en el traçat de la trajectòria, longitud del satèl·lit 2D en l'anterior rendering
+			var dragging=false; // arrossegant un element del mapa
+			var dragEstacio; // arrossegant una estació de seguiment (i no una zona d'estudi)
+			var angleLatEstacio=[]; // array de latituds de les estacions
+			var angleLonEstacio=[]; // array de longituds de les estacions
+			angleLatEstacio[0]=0*Math.PI/180; // latitud inicial de l'estació per defecte
+			angleLonEstacio[0]=0*Math.PI/180; // longitud inicial de l'estació per defecte
+			var numEstacions=1; // nombre actual d'estacions
+			var horitzo;
+			var labelVisibles, labelEnUs, labelLatitud, labelLongitud;
+			var numDintre, numMigDintre;	
+
+			function initGUI() {
+				var menuDiv = document.getElementById( 'dat' );
+				var gui = new dat.GUI({autoPlace: false, width:350});
+				menuDiv.appendChild( gui.domElement );
+				folder1 = gui.addFolder( 'CONSTEL·LACIÓ DE SATÈL·LITS' );
+				//folder1.add( parametres, "longitud", -180, 180, 1 ).name("Longitud node asc.").onChange( canviaParametres );
+				//folder1.add( parametres, "inclinacio", 0, 90, 1 ).name("Inclinació").onChange( canviaParametres );
+				//folder1.add( parametres, "argPerigeu", -180, 180, 1 ).name("Arg. del perigeu").onChange( canviaParametres );
+				//folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange( canviaSemieix );
+				//folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange( canviaExcentricitat );
+				folder1.add( parametres, "nOrb", 1, maxOrb, 1 ).name("Òrbites").onChange( canviaParametres );
+				folder1.add( parametres, "nSat", 1, maxSat, 1 ).name("Satèl·lits per òrbita").onChange( canviaParametres );
+                //folder1.add( parametres, "anomalia", -180, 180, 1 ).name("Anomalia veritable").onChange( canviaParametres );
+				/*textPeriode=folder1.add( parametres, "display");
+				textPeriode.name("PERÍODE :");
+				textPeriode.domElement.hidden = true;
+				var estilPeriode = textPeriode.domElement.previousSibling.style;
+				estilPeriode.textAlign = 'center';
+				estilPeriode.width= '100%';*/
+				var folder2 = gui.addFolder( 'DISPOSITIU RECEPTOR GPS' );
+                folder2.add( parametres, "qualitat", 0, 100, 1 ).name("Qualitat de recepció");
+				//folder1.add( parametres, "afegirEstacio").name("Afegir dispositiu");
+				//folder1.add( parametres, "eliminarEstacio").name("Eliminar dispositiu");
+				var folder3 = gui.addFolder( 'SIMULACIÓ' );				
+				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png' ]).name("Tipus de mapa").onChange( canviaMapa );
+				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
+				botoIniciar = folder3.add( parametres, "pausa");
+				botoIniciar.name("I N I C I A");
+				estil = botoIniciar.domElement.previousSibling.style;
+				estil.backgroundColor = 'green';
+				estil.textAlign = 'center';
+				estil.width= '100%';
+				//folder1.open();
+                //folder2.open();
+				folder3.open();
+			}
+
+			init();
+			function init() {
+				// PARÀMETRES DE SIMULACIÓ
+				parametres = {
+					longitud: 77.632, // de l'òrbita del satèl·lit, graus
+					inclinacio: 56, // de l'òrbita del satèl·lit, graus
+					argPerigeu: 0, // argument del perigeu, graus
+					aOrbita: 26600, // semieix major de l'òrbita el·líptica, km
+					excentricitat: 0, // excentricitat de l'òrbita (entre 0 i 1)
+					anomalia:0, // anomalia veritable, graus
+                    nSat:9, // quantitat de satèl·lits a l'òrbita
+					nOrb:6, // quantitat d'òrbites
+                    qualitat: 50, // qualitat de recepció (%)
+					afegirEstacio: botoAfegirEstacio,
+					eliminarEstacio: botoEliminarEstacio,
+					mapa: 'mapa_fisic.png', // fitxer de textura del mapa
+					velAnimacio: 5, // velocitat de l'animació
+					display : true, // visualitzador del període del satèl·lit. El valor booleà no té cap efecte
+					pausa: botoPausa, // botó per pausar o reprendre la simulació
+				};
+
+				container = document.getElementById( 'container' );
+                // CÀMERA
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.up.set(0,0,1);
+				camera.position.x = 10; // red
+				camera.position.y = 0; // green
+				camera.position.z = 0; // blue
+
+				camera2D = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 4, 4.5);
+				camera2D.position.z = 4.5; 
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x000000 );
+
+				scene2D = new THREE.Scene();
+
+                // LLUM
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.add(ambientLight);
+
+                // EIX TERRA
+                var dir = new THREE.Vector3(0,Math.sin(angleTerra),Math.cos(angleTerra));
+                var origin = new THREE.Vector3( 0, 0, 0 );
+                var arrowHelper = new THREE.ArrowHelper( dir, origin, 1.1, 0x555555, 0.075, 0.05);
+                scene.add( arrowHelper );
+
+				// TERRA I MAPA 2D
+				canviaMapa();
+
+				// SATÈL·LIT 3D
+				grupMon=new THREE.Group();
+
+				var geometrySat3D = new THREE.SphereGeometry(0.05,6,6 );
+                for(s=0;s<maxOrb;s++) {
+					grupSat[s]=new THREE.Group();
+					grupMon.add(grupSat[s]);
+					materialSat3D = new THREE.MeshBasicMaterial( { color: colorSat[s]} );
+					sat3D[s]=[];
+					for(i=0;i<maxSat;i++) {
+						sat3D[s][i] = new THREE.Mesh( geometrySat3D, materialSat3D );
+						grupSat[s].add(sat3D[s][i]);
+					}
+				}
+
+				// FUNCIONS OBJ
+				var onProgress = function ( xhr ) {
+					if ( xhr.lengthComputable ) {
+						var percentComplete = xhr.loaded / xhr.total * 100;
+					}
+				};
+				var onError = function ( xhr ) {
+				};	
+
+				// SATÈL·LIT 2D
+                var geometrySat2D = new THREE.CircleGeometry(0.02,60);
+                for(s=0;s<maxOrb;s++) {
+					materialSat2D = new THREE.MeshBasicMaterial( { color: colorSat[s]} );
+					sat2D[s]=[];
+					for(i=0;i<maxSat;i++) {
+						sat2D[s][i] = new THREE.Mesh( geometrySat2D, materialSat2D );
+					}
+				}
+
+				// GPS 2D
+				for(s=0;s<maxOrb;s++) {
+					materialGps = new THREE.MeshBasicMaterial( { transparent: true, opacity: 1,color: colorSat[s]} );
+					gps2D[s]=[];
+					for(i=0;i<maxSat;i++) {
+						gps2D[s][i] = new THREE.Mesh( geometrySat2D, materialGps );
+					}
+				}
+
+				// LABELS 2D
+				for(s=0;s<maxOrb;s++) {
+					label2D[s]=[];
+					for(i=0;i<maxSat;i++) {
+						try {
+							label2D[s][i] = makeTextSprite(lletra[s]+i,{ fontsize: 24, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+						}
+						catch (err) {
+						}
+					}
+				}
+
+				// DISPOSITIU GPS
+				try {
+					var labelRumb=makeTextSprite("0º",{ fontsize: 48, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelRumb.position.x=centreX2-0.05;
+					labelRumb.position.y=centreY2+0.65;
+					labelRumb.position.z=2*shiftZ;
+					scene2D.add(labelRumb);
+					var labelOrientacio=makeTextSprite("N",{ fontsize: 48, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelOrientacio.position.x=centreX2+0.85;
+					labelOrientacio.position.y=centreY2+0.65;
+					labelOrientacio.position.z=2*shiftZ;
+					scene2D.add(labelOrientacio);
+					labelVisibles=makeTextSprite("0",{ fontsize: 48, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelEnUs=makeTextSprite("0",{ fontsize: 48, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelLatitud=makeTextSprite("0º",{ fontsize: 36, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelLongitud=makeTextSprite("0º",{ fontsize: 36, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+				}
+				catch (err){
+				}
+				
+				// ÒRBITES
+				for(s=0;s<maxOrb;s++) {
+					materialOrbita[s] = new THREE.LineBasicMaterial( { color : colorSat[s]} );
+					var geometryOrbita = new THREE.BufferGeometry();
+					orbita[s] = new THREE.Line( geometryOrbita, materialOrbita[s] );
+				}
+
+				// ESTACIÓ 2D
+				materialEstacio = new THREE.MeshBasicMaterial( { color: 0xff0000} );
+				geometryEstacio = new THREE.CircleGeometry(0.03);
+				estacio[0]= new THREE.Mesh(geometryEstacio, materialEstacio);
+				scene2D.add(estacio[0]);
+
+				// ESTACIÓ 3D
+				materialEstacio3D = new THREE.MeshBasicMaterial( { color: 0xff0000} );
+				geometryEstacio3D = new THREE.SphereGeometry( 0.02, 6, 6 );
+				estacio3D[0] = new THREE.Mesh(geometryEstacio3D, materialEstacio3D);
+				//mouEstacio(0);	
+
+				// TAULER DE GRÀFIQUES	
+
+				var loader = new THREE.TextureLoader();
+				loader.load( 'imatges/'+"gps.png", function ( texture ) {
+					var geometryTauler = new THREE.PlaneGeometry(1024/600,1914/600);
+					var materialTauler = new THREE.MeshBasicMaterial( {map: texture} );
+					tauler = new THREE.Mesh( geometryTauler, materialTauler);
+					tauler.position.x=centreX2;
+					tauler.position.y=centreY2;
+					tauler.position.z=0;
+					scene2D.add( tauler )
+				} );
+
+                // MÓN
+                grupMon.setRotationFromAxisAngle(new THREE.Vector3(1,0,0),-angleTerra);
+                scene.add(grupMon);
+			
+				// RENDERER
+				if (Detector.webgl) {
+					ambWebgl=true;
+					renderer = new THREE.WebGLRenderer();
+					renderer.shadowMap.enabled = true;
+					renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+				} else {
+					ambWebgl=false;
+					renderer = new THREE.CanvasRenderer();
+					console.log("WebGL no és compatible, renderitzant amb CanvasRenderer.");
+					alert("Aquest navegador no és compatible amb WebGL,\nalgunes funcionalitats del simulador no estaran disponibles.");
+				}
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.autoClear = false;
+				container.appendChild( renderer.domElement );
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				window.addEventListener( 'resize', onWindowResize, false );
+				window.addEventListener( 'mousedown', onMouseDown, false );
+				window.addEventListener( 'mouseup', onMouseUp, false );
+				window.addEventListener( 'mousemove', onMouseMove, false );
+				window.addEventListener( 'focus', onFocus, false );
+				initGUI();
+				canviaParametres();
+				animate();				
+			}
+
+			function onFocus(){
+				canviaParametres();
+			}
+
+			function getLatLon(X,Y) {
+				mousePosition = new THREE.Vector2();
+				canvas = renderer.domElement;
+				canvasPosition = $(canvas).position();
+				rayCaster = new THREE.Raycaster();
+				var left=(1-perCent2D)*window.innerWidth+1;
+				var width=perCent2D*window.innerWidth-2;				
+
+				mousePosition.x = ((X - left) / width) * 2 - 1;
+				mousePosition.y = -((Y - canvasPosition.top) / canvas.height) * 2 + 1;
+				rayCaster.setFromCamera(mousePosition, camera2D);
+			}
+
+			function onMouseDown(evt) {
+				getLatLon(parseInt(evt.clientX),parseInt(evt.clientY));
+				numMove=-1;			
+				var i=0;
+				do {					
+					intersects=rayCaster.intersectObject(estacio[i],true);				
+					if (intersects.length > 0) {
+						numMove=i;						
+						controls.enabled=false;
+						dragging=true;
+						dragEstacio=true;
+						scene2D.remove(proximitat[numMove]);
+					}
+					i++;
+				}
+				while(numMove<0 && i<numEstacions);
+			};
+
+			function onMouseMove(evt) {
+				if (dragging) {
+					evt.preventDefault();
+					getLatLon(evt.clientX,evt.clientY);
+					intersects = rayCaster.intersectObject(mapa2D, true);
+					if (dragEstacio) {
+						if (intersects.length > 0) {
+							estacio[numMove].position.x=intersects[0].point.x;
+							estacio[numMove].position.y=intersects[0].point.y;
+						}
+					}
+				}
+			}
+
+			function onMouseUp(evt) {
+				if (dragging) {
+					evt.preventDefault();
+					getLatLon(evt.clientX,evt.clientY);
+					if (dragEstacio) {
+						angleLatEstacio[numMove]=(estacio[numMove].position.y-centreY)*Math.PI/mAmplada;
+						angleLonEstacio[numMove]=(estacio[numMove].position.x-centreX)*Math.PI/mAmplada;				
+						mouEstacio(numMove);
+					} 
+					controls.reset();
+					controls.enabled=true;					
+					dragging=false;
+				}
+			}
+
+			function botoPausa() {		
+				enPausa=!enPausa;
+				if (!enPausa) {
+					estil.backgroundColor = 'IndianRed';
+					botoIniciar.name("P A U S A");
+					previousTime=new Date().getTime();
+					animate();
+				} else {
+					estil.backgroundColor = 'green';
+					botoIniciar.name("C O N T I N U A");
+				}
+			}
+			
+			function addPoint(){
+				var dintreActual=0;
+				var migDintreActual=0;
+				if(!enPausa) {	
+					for(s=0;s<parametres.nOrb;s++) {
+						for(i=0;i<maxSat;i++) {
+							var laLatitud=(sat2D[s][i].position.y-centreY)*Math.PI/mAmplada;
+							var laLongitud=(sat2D[s][i].position.x-centreX)*Math.PI/mAmplada;
+
+							var distanciaActual=0;
+							dintre=false;
+							
+							for(j=0;j<numEstacions;j++) {
+								distanciaActual=distancia(angleLatEstacio[j],laLatitud,angleLonEstacio[j],laLongitud);
+								if (distanciaActual<horitzo) {
+									dintre=true;
+									dintreActual++;
+								}
+								if (distanciaActual<horitzo/2) {
+									migDintreActual++;
+								}
+							}   
+
+							if (dintre && sat2D[s][i].scale.x==1){							
+									sat2D[s][i].scale.x=4;
+									sat2D[s][i].scale.y=4;
+									sat2D[s][i].scale.z=4;
+								}
+							if (!dintre && sat2D[s][i].scale.x==4){							
+								sat2D[s][i].scale.x=1;
+								sat2D[s][i].scale.y=1;
+							}
+						}                 
+                    }		
+				}
+				try {
+					if (dintreActual!=numDintre) {
+						numDintre=dintreActual;
+						scene2D.remove(labelVisibles);		
+						labelVisibles=makeTextSprite(numDintre,{ fontsize: 48, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+						labelVisibles.position.x=centreX2-0;
+						labelVisibles.position.y=centreY2-1.12;
+						labelVisibles.position.z=2*shiftZ;
+						scene2D.add(labelVisibles);
+					}	
+					if (migDintreActual!=numMigDintre) {
+						numMigDintre=migDintreActual;
+						scene2D.remove(labelEnUs);		
+						labelEnUs=makeTextSprite(numMigDintre,{ fontsize: 48, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+						labelEnUs.position.x=centreX2+1;
+						labelEnUs.position.y=centreY2-1.12;
+						labelEnUs.position.z=2*shiftZ;
+						scene2D.add(labelEnUs);
+					}
+				}
+				catch (err){
+				}
+
+			}
+
+			function canviaSemieix() {
+				var eMax=1-satMin*rTerra/(parametres.aOrbita*1000);
+				folder1.__controllers[4].max(eMax);
+				canviaParametres();
+			}
+
+			function canviaExcentricitat() {
+				var aMin=satMin*rTerra/(1-parametres.excentricitat)/1000;
+				folder1.__controllers[3].min(aMin);
+				canviaParametres();
+			}
+
+			function canviaParametres() {
+				var angleInclinacio=parametres.inclinacio*Math.PI/180;
+				var angleLongitud=parametres.longitud*Math.PI/180-Math.PI/2;
+				var anglePerigeu=parametres.argPerigeu*Math.PI/180+Math.PI;
+
+				var quaternionPerigeu=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),anglePerigeu);
+				var quaternionInclinacio=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), angleInclinacio);
+				var quaternionLongitud;
+				for(s=0;s<parametres.nOrb;s++) {
+					quaternionLongitud=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), angleLongitud+2*Math.PI/parametres.nOrb*s);
+					quaternionTerra[s]=new THREE.Quaternion().multiplyQuaternions(quaternionLongitud,new THREE.Quaternion().multiplyQuaternions(quaternionInclinacio,quaternionPerigeu));
+				}
+
+				eOrbita=parametres.excentricitat;				
+
+				aOrbita=parametres.aOrbita*1000;
+				pOrbita=aOrbita*(1-eOrbita);
+				horitzo=rTerra*Math.acos(rTerra/pOrbita);
+
+				mouEstacio(0);
+
+				bOrbita=aOrbita*Math.sqrt(1-eOrbita*eOrbita);
+				periodeSat=2*Math.PI*Math.sqrt(aOrbita**3/MU);
+				omegaSat=2*Math.PI/periodeSat;
+
+				var hores=Math.floor(periodeSat/3600);
+				var minuts=Math.floor((periodeSat - 3600 * hores)/60);
+				var segons=Math.floor(periodeSat-hores*3600-minuts*60 );
+				var stringPeriode="PERÍODE : "+ hores + " hores " + minuts + " minuts " + segons + " segons";
+				/*if (textPeriode!=null) {
+					textPeriode.name(stringPeriode);
+				}*/				
+
+			// SAT
+				var mida=0.02*pOrbita/rTerra;
+				for(s=0;s<maxOrb;s++) {
+					for(i=0;i<maxSat;i++) {
+						scene2D.remove(sat2D[s][i]);
+						scene2D.remove(gps2D[s][i]);
+						if (label2D[s][i]!=undefined) {
+							scene2D.remove(label2D[s][i]);
+						}
+					}
+				}
+				for(s=0;s<parametres.nOrb;s++) {
+					for(i=0;i<parametres.nSat;i++) {
+						scene2D.add(sat2D[s][i]);
+						gps2D[s][i].position.z=-100;						
+						scene2D.add(gps2D[s][i]);
+						if (label2D[s][i]!=undefined) {
+							label2D[s][i].position.set(0,0,-100);
+							scene2D.add(label2D[s][i]);
+						}
+					}
+				}				
+
+			// ÒRBITA
+				for(s=0;s<maxOrb;s++) {
+					grupMon.remove(orbita[s]);
+					for(i=0;i<maxSat;i++){
+						grupSat[s].remove(sat3D[s][i]);
+					}
+				}
+				for(s=0;s<parametres.nOrb;s++) {
+					var curve = new THREE.EllipseCurve((pOrbita-aOrbita)/rTerra,0,aOrbita/rTerra,bOrbita/rTerra,0,2*Math.PI,false,0);
+					var points = curve.getPoints(360);
+					var geometryOrbita = new THREE.BufferGeometry().setFromPoints(points);
+					orbita[s] = new THREE.Line( geometryOrbita, materialOrbita[s] );
+					orbita[s].quaternion.copy(quaternionTerra[s]);				
+					grupMon.add(orbita[s]);
+					for(i=0;i<maxSat;i++){
+						grupSat[s].add(sat3D[s][i]);
+					}					
+				}
+		
+			// REININCI SIMULACIÓ
+				previousTime=new Date().getTime();
+				temps=0;
+				diaSencer=false;
+				count=0;
+				steps=0;
+				angleEscombrat=parametres.anomalia*Math.PI/180;;
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				camera2D.aspect = window.innerWidth / window.innerHeight;
+				camera2D.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+			}
+			
+			function render() {
+				if (!enPausa) {
+					var currentTime = new Date().getTime();
+					interval= currentTime - previousTime;
+					temps+=parametres.velAnimacio*factorVelocitat* interval;
+					previousTime = currentTime;	
+				}
+
+				if(meshTerra!=null) {
+					var quaternionZ=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), omega*temps);
+					meshTerra.quaternion.copy(quaternionZ);
+				}
+
+				if (!enPausa) {
+					angleEscombrat+=Math.sqrt(MU/((aOrbita*(1-eOrbita**2))**3))*(1+eOrbita*Math.cos(angleEscombrat))**2*parametres.velAnimacio*factorVelocitat*interval;
+				}
+
+				for (s=0;s<parametres.nOrb;s++) {
+					for (i=0;i<maxSat;i++) {
+						var quaternion=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI + angleEscombrat + 2* Math.PI / parametres.nSat * i);
+						sat3D[s][i].quaternion.copy(quaternion);
+						
+						var radi=pOrbita/rTerra*(1+eOrbita)/(1+eOrbita*Math.cos(angleEscombrat + 2* Math.PI / parametres.nSat * i));
+						sat3D[s][i].position.x=radi*Math.cos(angleEscombrat + 2 * Math.PI / parametres.nSat * i);
+						sat3D[s][i].position.y=radi*Math.sin(angleEscombrat + 2 * Math.PI / parametres.nSat * i);
+
+						var vectorSatTerra=new THREE.Vector3(sat3D[s][i].position.x,sat3D[s][i].position.y,0);
+						vectorSatTerra.applyQuaternion(quaternionTerra[s]);
+						vEsferic=coordEsferiques(vectorSatTerra);              										
+						var voltes=Math.floor((vEsferic.z - omega * temps + Math.PI) / (2 * Math.PI));
+						var longitudMapa=vEsferic.z -omega * temps - voltes * 2 * Math.PI;                  
+					
+						sat2D[s][i].position.x=centreX+longitudMapa*mAmplada/Math.PI;
+						sat2D[s][i].position.y=centreY+(Math.PI/2-vEsferic.y)*mAmplada/Math.PI;
+						sat2D[s][i].position.z=shiftZ;
+						
+						var distanciaX=distancia(angleLatEstacio[0],angleLatEstacio[0],angleLonEstacio[0],longitudMapa)/(horitzo)*factorGps;
+						if(longitudMapa<angleLonEstacio[0]) {
+							distanciaX=-distanciaX;
+						}
+						var distanciaY=distancia(angleLatEstacio[0],(Math.PI/2-vEsferic.y),angleLonEstacio[0],angleLonEstacio[0])/(horitzo)*factorGps;
+						if((Math.PI/2-vEsferic.y)<angleLatEstacio[0]) {
+							distanciaY=-distanciaY;
+						}
+						gps2D[s][i].position.x=centreX2+distanciaX;
+						gps2D[s][i].position.y=centreY2+distanciaY;	
+
+						var distanciaXY=Math.sqrt(distanciaX*distanciaX+distanciaY*distanciaY);
+						
+						if(distanciaXY>factorGps) {
+							gps2D[s][i].position.z=-100;
+							if (label2D[s][i]!=undefined) {
+								label2D[s][i].position.set(centreX2+distanciaX+shiftLabelX,centreY2+distanciaY+shiftLabelY,-100);
+							}
+						} else {
+							//gps2D[s][i].material.opacity=0.5*(1+(factorGps-distanciaXY)/factorGps);	
+							gps2D[s][i].position.z=shiftZ;
+							if (label2D[s][i]!=undefined) {
+								label2D[s][i].position.set(centreX2+distanciaX+shiftLabelX,centreY2+distanciaY+shiftLabelY,shiftZ);
+							}
+						}
+					}
+					grupSat[s].quaternion.copy(quaternionTerra[s]);
+				}               
+
+				steps++;
+				if (temps>0) {
+					if (steps % shiftCount == 0) {
+						addPoint();				
+					}
+  				} 
+
+				camera.aspect=(1-perCent2D)*window.innerWidth/window.innerHeight;
+				camera2D.aspect=perCent2D*window.innerWidth/window.innerHeight;
+				camera.updateProjectionMatrix();
+				camera2D.updateProjectionMatrix();
+
+				renderer.setViewport(0,0,window.innerWidth,window.innerHeight);
+                renderer.clear();	
+				renderer.setViewport(1,1,(1-perCent2D)*window.innerWidth-2,window.innerHeight-2);
+                renderer.render( scene, camera );
+				renderer.setViewport((1-perCent2D)*window.innerWidth+1,1,perCent2D*window.innerWidth-2,window.innerHeight-2);
+                renderer.render( scene2D, camera2D );	
+			}
+		
+			function coordEsferiques(vector) {
+				var r=vector.length();
+				var theta=Math.acos(vector.z/r);
+				var phi=Math.atan2(vector.y,vector.x);
+				return(new THREE.Vector3(r,theta,phi));
+			}
+
+			function canviaMapa() {
+				var loader = new THREE.TextureLoader();
+				loader.load( 'imatges/'+parametres.mapa, function (texture) {
+					// MAPA 2D
+					scene2D.remove(mapa2D);
+					var geometryMapa2D = new THREE.PlaneGeometry(2*mAmplada, 2*mAlsada );
+					var materialMapa2D = new THREE.MeshBasicMaterial(  { map: texture, overdraw: true});
+					mapa2D = new THREE.Mesh( geometryMapa2D, materialMapa2D );
+					mapa2D.position.x=centreX;
+					mapa2D.position.y=centreY;
+					mapa2D.position.z=0;
+					scene2D.add( mapa2D );
+                    // TERRA
+					grupMon.remove( meshTerra );
+					var geometryTerra = new THREE.SphereGeometry( 1, 20, 20 );
+					geometryTerra.rotateX(Math.PI/2);
+					var materialTerra = new THREE.MeshLambertMaterial({ map: texture, overdraw: true });
+					meshTerra = new THREE.Mesh( geometryTerra, materialTerra );
+                    meshTerra.castShadow=true;
+					grupMon.add( meshTerra );
+					for(j=0;j<numEstacions;j++) {
+						meshTerra.add(estacio3D[j]);
+					}
+				} );	
+			}
+
+			function botoEliminarEstacio() {
+				numEstacions--;
+				scene.remove(estacio3D[numEstacions]);
+				scene2D.remove(estacio[numEstacions]);
+				scene2D.remove(proximitat[numEstacions]);				
+			}
+
+			function botoAfegirEstacio() {
+				if (numEstacions==1) {
+					alert("La nova estació s'ha ubicat provisionalment en el mapa.\nPots canviar la ubicació de les estacions arrossegant-les\namb el ratolí.")
+				}
+				angleLatEstacio[numEstacions]=10*Math.PI/180;
+				angleLonEstacio[numEstacions]=0;
+
+				estacio[numEstacions]= new THREE.Mesh( geometryEstacio, materialEstacio );
+				scene2D.add(estacio[numEstacions]);
+				estacio3D[numEstacions]= new THREE.Mesh( geometryEstacio3D, materialEstacio3D );
+				meshTerra.add(estacio3D[numEstacions]);		
+
+				mouEstacio(numEstacions);
+				numEstacions++;
+			}
+
+			function canviaRadiProximitat() {	
+				var distanciaZona=horitzo/rTerra;			
+				for(j=0;j<numEstacions;j++) {		
+					scene2D.remove(proximitat[j]);
+					var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+					var geometry = new THREE.Geometry();
+					for (i=0;i<=360;i+=stepAngle) {
+						azimuth=i*Math.PI/180;
+						var novCoord=novesCoordenades(angleLatEstacio[j],angleLonEstacio[j],azimuth,distanciaZona)
+						var xProximitat=centreX+novCoord.y*mAmplada/Math.PI;
+						var yProximitat=centreY+novCoord.x*mAmplada/Math.PI;
+						geometry.vertices.push(new THREE.Vector3(xProximitat, yProximitat, shiftZ) );
+					}
+					proximitat[j] = new THREE.Line( geometry, material );
+					scene2D.add(proximitat[j]);
+				}
+			}
+
+			function mouEstacio(numEst) {
+				estacio[numEst].position.x=centreX+angleLonEstacio[numEst]*mAmplada/Math.PI;
+				estacio[numEst].position.y=centreY+angleLatEstacio[numEst]*mAmplada/Math.PI;
+				estacio[numEst].position.z=shiftZ;
+
+				estacio3D[numEst].position.x=Math.sin(Math.PI/2-angleLatEstacio[numEst])*Math.cos(angleLonEstacio[numEst]);
+				estacio3D[numEst].position.y=Math.sin(Math.PI/2-angleLatEstacio[numEst])*Math.sin(angleLonEstacio[numEst]);
+				estacio3D[numEst].position.z=Math.cos(Math.PI/2-angleLatEstacio[numEst]);
+
+				//ZONA DE PROXIMITAT
+
+				scene2D.remove(proximitat[numEst]);
+				var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+				var distanciaZona=horitzo/rTerra;
+
+				var geometry = new THREE.Geometry();
+				for (i=0;i<=360;i+=stepAngle) {
+					azimuth=i*Math.PI/180;
+					var novCoord=novesCoordenades(angleLatEstacio[numEst],angleLonEstacio[numEst],azimuth,distanciaZona)
+					var xProximitat=centreX+novCoord.y*mAmplada/Math.PI;
+					var yProximitat=centreY+novCoord.x*mAmplada/Math.PI;
+					geometry.vertices.push(new THREE.Vector3(xProximitat, yProximitat, shiftZ) );
+				}
+				proximitat[numEst] = new THREE.Line( geometry, material );
+				scene2D.add(proximitat[numEst]);
+
+				// ETIQUETES DISPOSITIU
+				try {
+					scene2D.remove(labelLatitud);
+					labelLatitud=makeTextSprite((angleLatEstacio*180/Math.PI).toFixed(4)+"º",{ fontsize: 36, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelLatitud.position.x=centreX2+0.46;
+					labelLatitud.position.y=centreY2-1.34;
+					labelLatitud.position.z=2*shiftZ;
+					scene2D.add(labelLatitud);
+					scene2D.remove(labelLongitud);
+					labelLongitud=makeTextSprite((angleLonEstacio*180/Math.PI).toFixed(4)+"º",{ fontsize: 36, backgroundColor: {r:255, g:255, b:255, a:0}, borderThickness:0 } );
+					labelLongitud.position.x=centreX2+0.46;
+					labelLongitud.position.y=centreY2-1.49;
+					labelLongitud.position.z=2*shiftZ;
+					scene2D.add(labelLongitud);
+				} catch (err){
+				}
+			}
+
+			function distancia(lat1,lat2,lon1,lon2) {			 	
+				var dfi = (lat2-lat1);
+				var dlambda = (lon2-lon1);
+				var a = Math.sin(dfi/2) * Math.sin(dfi/2) +
+						Math.cos(lat1) * Math.cos(lat2) *
+						Math.sin(dlambda/2) * Math.sin(dlambda/2);
+				var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+				var d = rTerra * c;
+				return d;
+			}
+
+			function novesCoordenades(fi1, lambda1, azimuth, distance) {
+				var delta = distance;
+				var deltafi = delta * Math.cos(azimuth);
+				var fi2 = fi1 + deltafi;
+				var deltapsi = Math.log(Math.tan(fi2/2+Math.PI/4)/Math.tan(fi1/2+Math.PI/4));
+				var q = Math.abs(deltapsi) > 10e-12 ? deltafi / deltapsi : Math.cos(fi1);
+				var deltalambda = delta*Math.sin(azimuth)/q;
+				var lambda2 = lambda1 + deltalambda;
+				if (fi2>Math.PI/2) {fi2=Math.PI/2;}
+				if (fi2<-Math.PI/2) {fi2=-Math.PI/2;}
+				if (lambda2>Math.PI) {lambda2=Math.PI;}
+				if (lambda2<-Math.PI) {lambda2=-Math.PI;}
+				return new THREE.Vector3(fi2,lambda2,0);
+			}	
+
+			function makeTextSprite( message, parameters ) {
+				if ( parameters === undefined ) parameters = {};
+				
+				var fontface = parameters.hasOwnProperty("fontface") ? 
+					parameters["fontface"] : "Arial";
+				
+				var fontsize = parameters.hasOwnProperty("fontsize") ? 
+					parameters["fontsize"] : 18;
+				
+				var borderThickness = parameters.hasOwnProperty("borderThickness") ? 
+					parameters["borderThickness"] : 4;
+				
+				var borderColor = parameters.hasOwnProperty("borderColor") ?
+					parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+				
+				var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
+					parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+				//var spriteAlignment = THREE.SpriteAlignment.topLeft;
+					
+				var canvas = document.createElement('canvas');
+				var context = canvas.getContext('2d');
+				context.font = "Bold " + fontsize + "px " + fontface;
+				
+				// get size data (height depends only on font size)
+				var metrics = context.measureText( message );
+				var textWidth = metrics.width;
+				
+				// background color
+				context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
+											+ backgroundColor.b + "," + backgroundColor.a + ")";
+				// border color
+				context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
+											+ borderColor.b + "," + borderColor.a + ")";
+				context.lineWidth = borderThickness;
+				//roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+				// 1.4 is extra height factor for text below baseline: g,j,p,q.
+				
+				// text color
+				context.fillStyle = "rgba(0, 0, 0, 1.0)"
+				context.fillText( message, borderThickness, fontsize + borderThickness);
+				
+				// canvas contents will be used for a texture
+				var texture = new THREE.Texture(canvas) 
+				texture.needsUpdate = true;
+				var spriteMaterial = new THREE.SpriteMaterial( 
+					{ map: texture, useScreenCoordinates: false} );
+				var sprite = new THREE.Sprite( spriteMaterial );
+				sprite.scale.set(1,0.5,1);
+				return sprite;	
+			}
+		</script>
+	</body>
+</html>
