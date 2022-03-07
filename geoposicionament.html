@@ -58,7 +58,7 @@
 			const rTerra=6458428; // radi de l'esfera terrestre, metres
 			const segonsDia=23*3600+56*60+4; // nombre de segons que té un dia
 			const omega=2*Math.PI/segonsDia; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
-            const angleTerra=23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
+            const angleTerra=0 //23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
 
 			// CONSTANTS SIMULACIÓ
 			const shiftCount=1;	// al cap de quants renderings s'agafa un punt de la trajectòria
@@ -130,7 +130,7 @@
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png' ]).name("Tipus de mapa").onChange( canviaMapa );
 				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				botoIniciar = folder3.add( parametres, "pausa");
-				botoIniciar.name("I N I C I A R");
+				botoIniciar.name("I N I C I A");
 				estil = botoIniciar.domElement.previousSibling.style;
 				estil.backgroundColor = 'green';
 				estil.textAlign = 'center';
@@ -396,12 +396,12 @@
 				enPausa=!enPausa;
 				if (!enPausa) {
 					estil.backgroundColor = 'IndianRed';
-					botoIniciar.name("P A U S A R");
+					botoIniciar.name("P A U S A");
 					previousTime=new Date().getTime();
 					animate();
 				} else {
 					estil.backgroundColor = 'green';
-					botoIniciar.name("C O N T I N U A R");
+					botoIniciar.name("C O N T I N U A");
 				}
 			}
 			

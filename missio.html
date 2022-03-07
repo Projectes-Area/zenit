@@ -80,7 +80,7 @@
 					<h3 id="modalHeader">Informació dels sensors disponibles</h3>
 				</div>
 				<div class="modal-body" id="missatge">
-					<iframe src="https://docs.google.com/spreadsheets/d/1Ba-fxzhfwNNLMs_uMRLbJCzAuFO2ReOXzoOytcYsUOw/edit#gid=1727080996" height="600" width="75%"></iframe>           	
+					<iframe src="https://docs.google.com/spreadsheets/d/1Ba-fxzhfwNNLMs_uMRLbJCzAuFO2ReOXzoOytcYsUOw/edit#gid=1727080996" height="600" width="50%"></iframe>           	
 				</div>
 				<div class="modal-footer">
 					<button class="btn" data-dismiss="modal" aria-hidden="true">Tancar</button>
@@ -168,7 +168,7 @@
 			const rTerra=6458428; // radi de l'esfera terrestre, metres
 			const segonsDia=23*3600+56*60+4; // nombre de segons que té un dia
 			const omega=2*Math.PI/segonsDia; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
-            const angleTerra=23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
+            const angleTerra=0 //23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
 			const omegaSol=omega/365.256363; // freqüencia angular de translació de la Terra entorn al Sol, rad/s
 
 			// CONSTANTS SIMULACIÓ
@@ -239,14 +239,14 @@
 				var gui = new dat.GUI({autoPlace: false, width:350});
 				menuDiv.appendChild( gui.domElement );
 				folder1 = gui.addFolder( 'ÒRBITA DEL SATÈL·LIT' );
-				folder1.add( parametres, "longitud", -180, 180, 1 ).name("Longitud node asc.").onChange( canviaParametres );
-				folder1.add( parametres, "inclinacio", 0, 90, 1 ).name("Inclinació").onChange( canviaParametres );
-				folder1.add( parametres, "argPerigeu", -180, 180, 1 ).name("Arg. del perigeu").onChange( canviaParametres );
+				folder1.add( parametres, "longitud", 0, 360, 1 ).name("Longitud node asc.").onChange( canviaParametres );
+				folder1.add( parametres, "inclinacio", 0, 180, 1 ).name("Inclinació").onChange( canviaParametres );
+				folder1.add( parametres, "argPerigeu", 0, 360, 1 ).name("Arg. del perigeu").onChange( canviaParametres );
 				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange( canviaSemieix );
 				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange( canviaExcentricitat );
 				//folder1.add( parametres, "nSat", 1, maxSat, 1 ).name("Satèl·lits en òrbita").onChange( canviaNombre );
 				//folder1.add( parametres, "nOrb", 1, maxSat, 1 ).name("Quantitat d'òrbites").onChange( canviaNombre );
-                folder1.add( parametres, "anomalia", -180, 180, 1 ).name("Anomalia veritable").onChange( canviaAnomalia );
+                folder1.add( parametres, "anomalia", 0, 360, 1 ).name("Anomalia veritable").onChange( canviaAnomalia );
 				textPeriode=folder1.add( parametres, "display");
 				textPeriode.name("PERÍODE :");
 				textPeriode.domElement.hidden = true;
@@ -270,7 +270,7 @@
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png' ]).name("Tipus de mapa").onChange( canviaMapa );
 				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				botoIniciar = folder3.add( parametres, "pausa");
-				botoIniciar.name("I N I C I A R");
+				botoIniciar.name("I N I C I A");
 				estil = botoIniciar.domElement.previousSibling.style;
 				estil.backgroundColor = 'green';
 				estil.textAlign = 'center';
@@ -289,9 +289,9 @@
 				//folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
 				folder4.open();
 				var folder5 = guiDret.addFolder( 'INFORMACIÓ ADDICIONAL' );
-				folder5.add( parametres, "infoSatelit").name("Satèl·lit");		
+				//folder5.add( parametres, "infoSatelit").name("Satèl·lit");		
 				folder5.add( parametres, "infoMissions").name("Missions");						
-				folder5.add( parametres, "selMissio").name("Selecciona missió");					
+				folder5.add( parametres, "selMissio").name("Assignació de missió");					
 				//folder5.open();			
 			}
 
@@ -318,7 +318,7 @@
 					velAnimacio: 3, // velocitat de l'animació
 					display : true, // visualitzador del període del satèl·lit. El valor booleà no té cap efecte
 					pausa: botoPausa, // botó per pausar o reprendre la simulació
-					infoSatelit: botoInfoSatelit, // finestra modal amb el satèl·lit 3D
+					//infoSatelit: botoInfoSatelit, // finestra modal amb el satèl·lit 3D
 					infoSensors: botoInfoSensors, // finestra modal amb informació sobre els sensors
 					infoMissions: botoInfoMissions, // finestra modal amb informació sobre els sensors					
 					selMissio: botoSelMissio, //selecciona una missió
@@ -458,7 +458,7 @@
 					.add("imatges/sat_punt.png")
 					.add("imatges/estacio_punt.png")
 					.add("imatges/zona_punt.png")
-					.add("imatges/eixos2D2D.png")
+					.add("imatges/eixos2DNou.png")
 					.add("imatges/llegenda2D.png")
 					.add("imatges/8k_earth_daymap.jpg")
 					.load(setup);
@@ -470,7 +470,7 @@
 
 						// TAULER DE GRÀFIQUES	
 
-						var tauler = new PIXI.Sprite(PIXI.loader.resources["imatges/eixos2D2D.png"].texture);
+						var tauler = new PIXI.Sprite(PIXI.loader.resources["imatges/eixos2DNou.png"].texture);
 						tauler.x = centreMapaX-257;
 						tauler.y = centreMapaY-midaMapa-280;
 						app.stage.addChild(tauler);
@@ -718,12 +718,12 @@
 				enPausa=!enPausa;
 				if (!enPausa) {
 					estil.backgroundColor = 'IndianRed';
-					botoIniciar.name("P A U S A R");
+					botoIniciar.name("P A U S A");
 					previousTime=new Date().getTime();
 					animate();
 				} else {
 					estil.backgroundColor = 'green';
-					botoIniciar.name("C O N T I N U A R");
+					botoIniciar.name("C O N T I N U A");
 				}
 			}
 
@@ -932,14 +932,14 @@
 			}
 
 			function canviaParametres() {
-				var angleInclinacio=parametres.inclinacio*Math.PI/180;
-				var angleLongitud=parametres.longitud*Math.PI/180-Math.PI/2;
-				var anglePerigeu=parametres.argPerigeu*Math.PI/180+Math.PI;
+				var angleInclinacio = parametres.inclinacio * Math.PI/180;
+				var angleLongitud = (parametres.longitud + 90 ) * Math.PI/180;
+				var anglePerigeu = (parametres.argPerigeu -90) * Math.PI/180;
 
 				longitudAnterior=angleLongitud;
 
 				var quaternionPerigeu=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),anglePerigeu);
-				var quaternionInclinacio=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), angleInclinacio);
+				var quaternionInclinacio=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), -angleInclinacio);
 				var quaternionLongitud=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), angleLongitud);
 				quaternionTerra=new THREE.Quaternion().multiplyQuaternions(quaternionLongitud,new THREE.Quaternion().multiplyQuaternions(quaternionInclinacio,quaternionPerigeu));
 
@@ -1026,7 +1026,7 @@
 				nivellBateria=50;
 				for(s=0;s<parametres.nOrb;s++) {
 					for(i=0;i<parametres.nSat;i++) {
-						angleEscombrat[i]=parametres.anomalia*Math.PI/180 + 2* Math.PI / parametres.nSat * i;
+						angleEscombrat[i]=Math.PI/180*(parametres.anomalia) + 2* Math.PI / parametres.nSat * i;
 					}
 				}
 				for(i=0;i<32;i++) {
@@ -1462,7 +1462,7 @@
 			}
 
 			function botoInfoMissions() {			 	
-				var msgDiv="<table style='width:100%'>";
+				var msgDiv="<table style='width:100px;'>";
 				for(var i=0; i<row_mis.length; i++) {
 					msgDiv +="<tr>";
 					for(var c=0; c<row_mis[i].length; c++) {	  		
@@ -1491,6 +1491,7 @@
 							}
 						}
 					}
+					msgDiv +="</tr>";  
 				}
 				msgDiv +="</table>";
 				$("#modalHeader").html("Relació de missions");
