@@ -44,6 +44,9 @@
 			.dg .c div {
 				box-sizing: content-box;                                                             
 			}
+			.dg li.title {
+				color:red;
+			}
 			.center {
 				display: block;
 				margin-left: auto;
@@ -1462,19 +1465,21 @@
 			}
 
 			function botoInfoMissions() {			 	
-				var msgDiv="<table style='width:100px;'>";
-				for(var i=0; i<row_mis.length; i++) {
+				var msgDiv="<table style='width:100%;'>";
+				//for(var i=0; i<row_mis.length; i++) {
+				for(var i=0; i<7; i++) {					
 					msgDiv +="<tr>";
-					for(var c=0; c<row_mis[i].length; c++) {	  		
+					for(var c=0; c<row_mis[i].length; c++) {	  								
 						var senVal=row_mis[i][c];	
+						console.log(c,senVal);
 						if(i==0) {
-							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; text-align:center'><b>"+senVal+"</b></td>";
+							msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; text-align:center;'><b>"+senVal+"</b></td>";
 						}	else {
 							if (c==100){
-								msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
+								msgDiv +="<td style='border: 1px solid #cacaca; padding:3px;'>"+senVal+"<br><button data-toggle='collapse' data-target='#demo'>Més informació</button><div id='demo' class='collapse'>Lorem ipsum dolor text....</div></td>";
 							} else {
-								if (c==3) {	
-									msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' height='100' class='center'></td>";						
+							 if (c==3) {	
+									msgDiv +="<td style='border: 1px solid #cacaca; padding:3px;'><a href='"+senVal+"' target='_blank'><img src='"+senVal+"' style='max-height:100px' class='center'></a></td>";														
 								} else {	
 									if (c==4) {
 										msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>";
@@ -1485,7 +1490,7 @@
 										msgDiv +="</td>";
 										//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><a href='"+senVal+"' target='_blank'>Enllaç</a></td>";	
 									} else {
-										msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'>"+senVal+"</td>";
+										msgDiv +="<td style='border: 1px solid #cacaca; padding:3px;'>"+senVal+"</td>";
 									}
 								}
 							}
