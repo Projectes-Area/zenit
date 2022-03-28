@@ -104,6 +104,8 @@
 			var noms;
 			var longInicialTerra = 0;
 			var longitudTLE = 0;
+			var satTLEx,satTLEy,satTLEz;
+			var mode = 'TLE';
 
 			// CONSTANTS TERRA            
             const MU=398694790080000; // G * massa de la Terra, S.I.
@@ -182,12 +184,12 @@
 				menuDiv.appendChild( gui.domElement );
 				folder0 = gui.addFolder( 'SELECCIÓ DE SATÈL·LIT' );
 				folder1 = gui.addFolder( 'ÒRBITA DEL SATÈL·LIT' );
-				folder1.add( parametres, "longitud", 0, 360, 1 ).name("Longitud node asc.").onChange( canviaParametres );
-				folder1.add( parametres, "inclinacio", 0, 180, 1 ).name("Inclinació").onChange( canviaParametres );
-				folder1.add( parametres, "argPerigeu", 0, 360, 1 ).name("Arg. del perigeu").onChange( canviaParametres );
-				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange( canviaSemieix );
-				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange( canviaExcentricitat);
-				folder1.add( parametres, "anomalia", 0, 360, 1 ).name("Anomalia veritable").onChange( canviaParametres );
+				folder1.add( parametres, "longitud", 0, 360, 1 ).name("Longitud node asc.").onChange(canviaParametres);
+				folder1.add( parametres, "inclinacio", 0, 180, 1 ).name("Inclinació").onChange(canviaParametres);
+				folder1.add( parametres, "argPerigeu", 0, 360, 1 ).name("Arg. del perigeu").onChange( canviaParametres);
+				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange(canviaSemieix);
+				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange(canviaExcentricitat);
+				folder1.add( parametres, "anomalia", 0, 360, 1 ).name("Anomalia veritable").onChange(canviaParametres);
 				textPeriode=folder1.add( parametres, "display");
 				textPeriode.name("PERÍODE :");
 				textPeriode.domElement.hidden = true;
@@ -205,7 +207,7 @@
 				var folder3 = gui.addFolder( 'SIMULACIÓ' );				
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png']).name("Tipus de mapa").onChange( canviaMapa );
 				folder3.add( parametres, "veureLine").name("Mostrar trajectòria").onChange( veureLine );
-				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );;
+				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				botoIniciar = folder3.add( parametres, "pausa");
 				botoIniciar.name("I N I C I A");
 				estil = botoIniciar.domElement.previousSibling.style;
@@ -539,7 +541,6 @@
 				} else {
 					estil.backgroundColor = 'green';
 					botoIniciar.name("C O N T I N U A");
-
 				}
 			}
 
@@ -810,6 +811,7 @@
 				//scene2D.add(bateria);
 		
 			// REININCI SIMULACIÓ
+
 				previousTime=new Date().getTime();
 				temps=0;
 				diaSencer=false;
@@ -822,9 +824,28 @@
 				veureLine();
 				
 			// POSICIÓ TERRA
-				var quaternion=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI + angleEscombrat);
-				sat3D.quaternion.copy(quaternion);				
-				var vectorSat3D=new THREE.Vector3();
+
+				var vectorSat3D = new THREE.Vector3();
+				var radi;
+				if(mode == 'TLE') {
+					var distanciaProva;
+					var distanciaSat = pOrbita/rTerra;
+					for(i=0;i<360;i++){
+						an = i * Math.PI/180;
+						radi=pOrbita/rTerra*(1+eOrbita)/(1+eOrbita*Math.cos(an));
+						sat3D.position.x=radi*Math.cos(an);
+						sat3D.position.y=radi*Math.sin(an);
+						sat3D.getWorldPosition(vectorSat3D);
+						distanciaProva = Math.sqrt((satTLEx-vectorSat3D.x)**2+(satTLEy-vectorSat3D.y)**2+(satTLEz-vectorSat3D.z)**2);
+						if(distanciaProva < distanciaSat) {
+							distanciaSat = distanciaProva;
+							angleEscombrat = an;
+						}
+					}
+				}
+				radi = pOrbita/rTerra*(1+eOrbita)/(1+eOrbita*Math.cos(angleEscombrat));
+				sat3D.position.x=radi*Math.cos(angleEscombrat);
+				sat3D.position.y=radi*Math.sin(angleEscombrat);
 				sat3D.getWorldPosition(vectorSat3D);
 				longInicialTerra = -Math.atan2(vectorSat3D.y,vectorSat3D.x) + longitudTLE;
 				render();
@@ -1126,6 +1147,10 @@
 			}
 
 			function canviaCategoria() {
+				enPausa = true;
+
+
+
 				var numCategoria=-1;
 				var i=0;
 				do {
@@ -1140,10 +1165,11 @@
 				addTLE(numCategoria);
 			}
 
-			function addTLE(numCat) {				
+			function addTLE(numCat) {								
 				fetch('downloadLines.php?tipus='+ urls[numCat])
 				.then(response => response.text())
-				.then(response => 	{	var resposta = response.split('\r\n');
+				.then(response => 	{	nomSatelit = [];
+										var resposta = response.split('\r\n');
 										for (i=0;i<resposta.length/3-1;i++) {
 											nomSatelit[i] = resposta[3*i+1];
 										}
@@ -1161,13 +1187,23 @@
 										$("select:gt(0)").empty();
 										for (i=0;i<nomSatelit.length;i++) {
 											$("select:gt(0)").append('<option value="'+nomSatelit[i]+'">'+nomSatelit[i]+'</option>').css('width', '100%');											;
-										}
-										canviaSatelit();
-									}
-				    );
+										}										
+				})
+				.then(response => {
+						canviaSatelit();
+				})				    
+				.catch(
+					error => {
+						console.error('Error propi:', error);
+				});
 			}	
 
 			function canviaSatelit() {
+				mode = 'TLE';
+				console.log('mode ' + mode);
+				enPausa = true;
+				estil.backgroundColor = 'green';
+				botoIniciar.name("I N I C I A");
 				numSat=0;
 				for (i=0;i<cadenaSatelits.length/3;i++) {
 					if(parametres.nomSats===nomSatelit[i]) {
@@ -1177,7 +1213,7 @@
 				var line1 = cadenaSatelits[3*(numSat)+2];
 				var line2 = cadenaSatelits[3*(numSat)+3];
 
-				console.log(nomSatelit[numSat]);
+				console.log(cadenaSatelits[3*(numSat)+1]);
 				console.log(line1);
 				console.log(line2);
 
@@ -1197,8 +1233,17 @@
 				var positionAndVelocity = satellite.propagate(satrec, new Date());
 				var gmst = satellite.gstime(new Date());
 				var position = satellite.eciToGeodetic(positionAndVelocity.position, gmst);
+				console.log('Latitud: ' + position.latitude * 180/Math.PI);
+				console.log('Longitud: ' + position.longitude * 180/Math.PI);
 				longitudTLE = position.longitude;	
+				var positionEci = positionAndVelocity.position;
+				satTLEx = positionEci.x * 1000 / rTerra;
+				satTLEy = positionEci.y * 1000 / rTerra;
+				satTLEz = positionEci.z * 1000 / rTerra;
+
 				canviaParametres();
+				mode = 'manual';
+				console.log('mode ' + mode);
 			}	
 
 			/*function addTLE(numCat) {
