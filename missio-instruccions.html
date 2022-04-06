@@ -1,0 +1,78 @@
+<style>
+    li { 
+        margin-bottom: 10px;  
+    }
+    h3 {
+        text-align:center; 
+    }
+    img {
+        display:block;
+        margin-left:auto;
+        margin-right:auto;
+        width:80%; 
+    }
+    .subtitol {
+        display:block;
+        margin:auto;
+        background:rgb(224, 236, 247);
+        padding:1px;
+        width:80%;
+        margin-top:30px;
+        margin-bottom:30px
+    }
+</style>
+<div style="font-family:arial;line-height:1.5;">
+    <ul>
+        <li>
+            En aquesta activitat t’incorporaràs a una missió que has de completar amb l’ajut d’un <b>satèl·lit artificial</b> i una estació de seguiment virtuals.
+        </li>
+        <li>
+            Fes clic al botó <b>Assignació de missió</b> del panell desplegable de missió. S’obrirà una finestra emergent amb la fitxa descriptiva de la missió assignada. Llegeix la fitxa i navega seguint els enllaços per obtenir més informació sobre els fets que motiven la teva missió.
+        </li>
+    </ul>
+    <img src="imatges/missio_ui.png" />
+    <div class="subtitol">
+        <h3>
+            EQUIPAMENT I ÒRBITA DEL SATÈL·LIT
+        </h3>
+    </div>
+    <ul>
+        <li>
+            Fes clic al botó <b>Sensors</b> del <b>panell de missió</b>. S’obrirà una finestra emergent amb la taula de sensors. Selecciona els sensors que vulguis incloure en el satèl·lit, tenint present el <b>consum energètic</b> i la <b>despesa en espai d’emmagatzematge</b> de dades (sota la taula hi ha els valors totals corresponents als valors triats).
+        </li>
+        <li>
+            Fes una estimació de l'equipament que necessites. Cada <b>panell solar</b> aporta 1 kW de potència i cada <b>unitat de disc</b> emmagatzema fins a 3 GB de dades. La velocitat de transferència de dades a l'estació de seguiment quan s'estableix la comunicació és de 45.000 kb/s. Assigna els valors estimats en el panell de missions.
+        </li>
+        <li>
+            En el <b>panell de simulació</b>, assigna valors als <b>paràmetres</b> del satèl·lit en funció dels objectius de la missió. Per coneìxer l'efecte de cada paràmetre en l'òrbita i en la trajectòria terrestre fes clic en el botó <b>Elements orbitals</b> del panell. El panell mostra el període del satèl·lit corresponent als valors assignats.
+        </li>
+        <li>
+            La missió pot tenir una o diverses <b>zones d’estudi</b>. Pots afegir zones i assignar el radi d’exploració. Mou la zona d’estudi (de color marró en el mapa) arrossegant el punt central de la zona amb el ratolí fins a la ubicació de la missió assignada.
+        </li>
+        <li>
+            El satèl·lit obté dades en les zones d’estudi i les transfereix a una estació de seguiment. Pots afegir <b>estacions de seguiment</b> i assignar el radi de proximitat per establir la comunicació amb el satèl·lit. Per moure una estació (de color vermell en el mapa) s’ha d’arrossegar el punt central de la zona amb el ratolí fins a la nova ubicació.
+        </li>
+    </ul>
+    <div class="subtitol">
+        <h3>
+            INICI I MONITORITZACIÓ DE LA MISSIÓ
+        </h3>
+    </div>
+    <ul>
+        <li>
+            Per iniciar la missió prem el botó <b>INICIA</b> del panell de simulació. En el mateix panell pots canviar la <b>velocitat d’animació</b>. Plega després els panells per observar millor el moviment del satèl·lit i la gràfica d’evolució temporal d’energia i d’emmagatzematge.
+        </li>
+        <li>
+            Pots canviar el punt de vista i el nivell de zoom en la simulació central amb el botó esquerre i la roda del ratolí (la mida del satèl·lit no està a escala, es mostra més gran per facilitar l’observació).
+        </li>
+        <li>
+            El mapa mostra la posició del satèl·lit i la <b>trajectòria terrestre</b>. Comprova si el satèl·lit passa per la zona d’estudi i la cobreix totalment. En cas contrari, canvia els paràmetres i torna-ho a provar.
+        </li>
+        <li>
+            La gràfica d’<b>evolució temporal</b> mostra com varia el percentatge de <b>càrrega de les bateries</b> (en color verd) i de l<b>’espai d’emmagatzematge</b> disponible (en color blau). Si les bateries es descarreguen totalment els sensors no funcionen, augmenta el nombre de panells solars en el panell de missions.
+        </li>
+        <li>
+            Si el satèl·lit no passa per la zona de proximitat a l’estació de seguiment les dades no es poden transferir a l’estació i s’ocuparà tot l’emmagatzematge disponible. Canvia els paràmetres i torna-ho a provar.
+        </li>
+    </ul>
+</div>

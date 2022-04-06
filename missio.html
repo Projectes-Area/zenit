@@ -6,10 +6,10 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
 			body {
-				background-color: #000;	margin: 0 0 0 0; padding: 0 0 0 0; border: none; cursor: default;
+				background-color: #000;
 				margin: 0 0 0 0;
 				padding: 0 0 0 0;
-				border: none;
+				border: none; 
 				cursor: default;
 				overflow: hidden;
 			}
@@ -45,7 +45,8 @@
 				box-sizing: content-box;                                                             
 			}
 			.dg li.title {
-				color:red;
+				color:rgb(175,0,0);
+				font-size:small;
 			}
 			.center {
 				display: block;
@@ -57,6 +58,18 @@
 				border:1px solid #FFFFFF;
 				width:400px;
 			}	
+			.dg .property-name {
+				font-size:small;
+			}
+			.dg .cr.boolean .property-name {
+				font-size:small;
+			}
+			.dg .cr.function .property-name {
+				background-color: green;
+				text-align: center;
+				width: 100%;
+				font-size:medium;
+			}
 		</style>
 		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
 		integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
@@ -80,10 +93,9 @@
 			<div class="modal-dialog">
 				<div class="modal-header">
 					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-					<h3 id="modalHeader">Informació dels sensors disponibles</h3>
+					<h3 id="modalHeader"></h3>
 				</div>
-				<div class="modal-body" id="missatge">
-					<iframe src="https://docs.google.com/spreadsheets/d/1Ba-fxzhfwNNLMs_uMRLbJCzAuFO2ReOXzoOytcYsUOw/edit#gid=1727080996" height="600" width="50%"></iframe>           	
+				<div class="modal-body" id="missatge">					         	
 				</div>
 				<div class="modal-footer">
 					<button class="btn" data-dismiss="modal" aria-hidden="true">Tancar</button>
@@ -256,6 +268,7 @@
 				var estilPeriode = textPeriode.domElement.previousSibling.style;
 				estilPeriode.textAlign = 'center';
 				estilPeriode.width= '100%';
+				folder1.add( parametres, "infoParametres").name("Elements orbitals");
 				var folder2 = gui.addFolder( 'ESTACIONS DE SEGUIMENT' );
                 folder2.add( parametres, "radiProximitat", 100, 4000, 100 ).name("Radi de proximitat").onChange( canviaRadiProximitat );
 				folder2.add( parametres, "afegirEstacio").name("Afegir estació");
@@ -269,7 +282,8 @@
 				//folder7.open();
 				//*/
 				var folder3 = gui.addFolder( 'SIMULACIÓ' );	
-				folder3.add( parametres, "infoParametres").name("Paràmetres");			
+					
+				//folder3.add( parametres, "infoInstruccions").name("Instruccions");		
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png' ]).name("Tipus de mapa").onChange( canviaMapa );
 				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				botoIniciar = folder3.add( parametres, "pausa");
@@ -290,12 +304,14 @@
 				folder4.add( parametres, "infoSensors").name("Sensors");
 				//folder4.add( parametres, "cameres", 0, 5, 1 ).name("Càmeres òptiques");
 				//folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
-				folder4.open();
+				//folder4.open();
 				var folder5 = guiDret.addFolder( 'INFORMACIÓ ADDICIONAL' );
-				//folder5.add( parametres, "infoSatelit").name("Satèl·lit");		
-				folder5.add( parametres, "infoMissions").name("Missions");						
+				//folder5.add( parametres, "infoSatelit").name("Satèl·lit");
+				folder5.add( parametres, "infoInstruccions").name("Instruccions");		
+				//folder5.add( parametres, "infoMissions").name("Missions");						
 				folder5.add( parametres, "selMissio").name("Assignació de missió");					
-				//folder5.open();			
+				folder5.open();	
+				//$('.ul .close-button').html("Plega/desplega panell");			
 			}
 
 			init();
@@ -326,6 +342,7 @@
 					infoMissions: botoInfoMissions, // finestra modal amb informació sobre els sensors					
 					selMissio: botoSelMissio, //selecciona una missió
 					infoParametres: botoInfoParametres, //Presenta la inforació dels paràmetres configurables del simulador
+					infoInstruccions: botoMostraInstruccions,
 					panells: 1, 
 					discs:1,
 					cameres: 1,
@@ -535,6 +552,8 @@
 						// UNITATS DE DISC I BATERIA
 						discs =	new PIXI.Graphics();
 						bateria = new PIXI.Graphics();
+
+						botoMostraInstruccions();
 				}	
 		
 				WIDTH=window.innerWidth * ampleRight;
@@ -554,6 +573,7 @@
 					mapa[k] = L.map('mapa'+k,{scrollWheelZoom:false,dragging:false});
 				}	
 				initGUI();
+				
 			}
 
 			function mostraTros(i,j) {
@@ -1365,18 +1385,29 @@
 			}
 			
 			function botoInfoSensors() {	
-
-			    $.ajax({
+			    /*$.ajax({
     	    		type: "GET",
 					contentType: "application/json; charset=utf-8",		    	    		
 					url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQgE509E8sh-fxq5pvy9LjjUSC4AHoJaSdqTW0xbFeS9MV6CpT1JeAgk3WhGrlQPBrU1qFX-TXEl3YZ/pub?gid=0&single=true&output=tsv",
         			dataType: "text",
-        			success: function(data) {processData(data);}
+        			success: function(data) {processData(data);console.log(data)}
+					
+     			});*/
+				$.ajax({
+    	    		type: "GET",
+					contentType: "application/json; charset=utf-8",		    	    		
+					url: "https://edumet.cat/areatac/zenit/sensors.csv",
+        			dataType: "text",
+        			success: function(data) {processData(data);}				
      			});
 
 				function processData(allText) {
-					var csv=allText;
-  					var msgDiv="<table style='width:100%'>";
+					var csv=allText;   
+    				var msgDiv="<table style='width:100%'>";
+		        	msgDiv +="<tr id='potSensors'><td style='width:50%; background-color: #cacaca'>Potència necessària (W): 0</td>";//<td style='width:50%; background-color: #cacaca'>Panells solars : 1</td></tr>";
+    				msgDiv +="<tr id='disSensors'><td style='width:50%; background-color: #cacaca'>Ocupació d'espai de disc (kb/s): 0</td>";//<td style='width:50%; background-color: #cacaca'>Unitats de disc : 1</td></tr>";    				    				
+    				msgDiv +="</table><br>"; 
+  					msgDiv +="<table style='width:100%'>";
 
 					var lines=csv.split("\n");
 
@@ -1412,18 +1443,10 @@
 								}
 						  }
   						}
-  						//var senVal=row_sen[i][c];  						
-  						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><img src='"+senVal+"' style='width:30%'/></td>";
-  						//msgDiv +="<td style='border: 1px solid #cacaca; padding:3px'><button id='"+row_sen[i][1].substring(1,row_sen[i][1].length-1)+"'>Més informació</button></td>";  							
-	  					msgDiv +="</tr>";  						
+  						msgDiv +="</tr>";  						
 					}		  
 
-    				msgDiv +="</table>";
-    				msgDiv +="<hr>";    
-    				msgDiv +="<table style='width:100%'>";
-		        	msgDiv +="<tr id='potSensors'><td style='width:50%; background-color: #cacaca'>Potència necessària (W): 0</td>";//<td style='width:50%; background-color: #cacaca'>Panells solars : 1</td></tr>";
-    				msgDiv +="<tr id='disSensors'><td style='width:50%; background-color: #cacaca'>Ocupació d'espai de disc (kb/s): 0</td>";//<td style='width:50%; background-color: #cacaca'>Unitats de disc : 1</td></tr>";    				    				
-    				msgDiv +="</table>";    				
+    				msgDiv +="</table>";				
 
 					$("#modalHeader").html("Sensors que incorpora el satèl·lit");
 					$("#missatge").html(msgDiv);
@@ -1434,12 +1457,13 @@
 					if (sensorsIniciats) {
 						for(var i=1; i<lines.length; i++) {
 							if (sensor[i]) {
-								console.log("[id='sensor_"+i+"']");
+								//console.log("[id='sensor_"+i+"']");
 								$("[id='sensor_"+i+"']").prop("checked",true);
 							}
 						}
 					}	
-					sensorsIniciats=true;    		
+					calPotencia();
+					sensorsIniciats=true;    	
 				}
 			}	
 
@@ -1539,7 +1563,12 @@
 			}	
 
 			function botoInfoParametres() {	
+				$("#modalHeader").html("Elements orbitals");	
+				$("#missatge").html('<object type="text/html" data="orbital.html" width="100%" height="450px"></object>');
+				$("#finestraInfo").css({"visibility":"visible"});
+				$("#finestraInfo").modal('show');
 
+				/*
 			    $.ajax({
     	    		type: "GET",
 					contentType: "application/json; charset=utf-8",		    	    		
@@ -1581,7 +1610,7 @@
 					$("#missatge").html(msgDiv);
 					$("#finestraInfo").css({"visibility":"visible"});
 					$("#finestraInfo").modal('show');		    		
-				}
+				} */
 			}	
 
 			function calPotencia(){
@@ -1610,6 +1639,7 @@
 	   			var nDiscs=Math.ceil(disSensors/totalDis*5);
 				if (nPanells==0) {nPanells=1;}
 				if (nDiscs==0) {nDiscs=1;}
+				//console.log(nPanells+", "+nDiscs);
 				var nf = Intl.NumberFormat();
 	        	$('#potSensors').html("<td style='width:50%; background-color: #cacaca'>Potència necessària (W): "+nf.format(potSensors)+"</td>");//<td style='width:50%; background-color: #cacaca'>Panells solars : "+nPanells+"</td>")
 				$('#disSensors').html("<td style='width:50%; background-color: #cacaca'>Ocupació d'espai de disc (kb/s): "+nf.format(disSensors)+"</td>");//<td style='width:50%; background-color: #cacaca'>Unitats de disc : "+nDiscs+"</td>");
@@ -1623,7 +1653,15 @@
 				$("#missatge").html(msgDiv);
 				$("#finestraInfo").css({"visibility":"visible"});
 				$("#finestraInfo").modal('show');		    		
-			}				
+			}	
+			
+			function botoMostraInstruccions() {
+				$("#modalHeader").html("Incorpora't a una missió!");	
+				$("#missatge").html('<object type="text/html" data="missio-instruccions.html" width="100%" height="450px"></object>');
+				//$("#finestraInfo").load("missio-instruccions.html");
+				$("#finestraInfo").css({"visibility":"visible"});
+				$("#finestraInfo").modal('show');
+			}
 		</script>
 	</body>
 </html>
