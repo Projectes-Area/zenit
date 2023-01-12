@@ -14,13 +14,6 @@
 				overflow: hidden;
 			}
 			#container {
-				/*width: 100%;
-				height: 100vh;
-				min-width: 640px;
-				min-height: 360px;
-				position: relative;
-				overflow: hidden;
-				z-index: 0;*/
 				height: 100%;
 				width: 100%;
 				display: flex;
@@ -41,19 +34,32 @@
 			}
 			.modal-footer{
   				clear:both;
+			}			
+			.dg .c {
+				width: 45% !important;
+			}
+			.dg .c div {
+				box-sizing: content-box;                                                             
+			}
+			.dg .c select {
+				color: black;
+				font-size:small;
+				width: 190% !important;
+				margin-left: -90px;
 			}
 			.dg .c input[type=text] {                                                    
 				line-height:normal;                                                                  
 			} 
-			.dg .c div {
-				box-sizing: content-box;                                                             
-			}	
+			.dg .c .slider {
+				width: 50%;
+			}
 			.dg li.title {
 				color:rgb(175,0,0);
 				font-size:small;
 			}
 			.dg .property-name {
 				font-size:small;
+				width: 55% !important;
 			}
 			.dg .cr.boolean .property-name {
 				font-size:small;
@@ -61,13 +67,33 @@
 			.dg .cr.function .property-name {
 				background-color: green;
 				text-align: center;
-				width: 100%;
+				width: 100% !important;
 				font-size:medium;
 			}
-			.dg .c select {
-				color: black;
-				font-size:small;
+			.dg .cr.number input[type=text] {
+				width: 45%;
 			}
+			#carregant {
+				position: absolute;
+				display: unset;
+				margin: auto;
+				left: 0;
+				right: 0;
+				top: 0;
+				bottom: 0;
+				border: 3vmin solid white;
+				border-radius: 50%;
+				border-top: 3vmin solid blue;
+				width: 20vmin;
+				height: 20vmin;
+				animation: spin 1s linear infinite;
+				animation-play-state: running;
+			} 
+			@keyframes spin {
+				0% { transform: rotate(0deg); }
+				100% { transform: rotate(360deg); }
+			}
+
 		</style>
 	</head>
 	<body>		
@@ -120,7 +146,7 @@
 			var vEsferic;
 			var geometrySat, geometryTrajectoria, materialTrajectoria, geometryLink2D, materialLink2D, geometryLink3D, materialLink3D, geometryDiscs, materialDiscs, geometryBateria, materialBateria, materialOrbita, geometryEstacio, materialEstacio, geometryEstacio3D, materialEstacio3D;
 			var textPeriode;
-            var grupMon, grupSat;
+      var grupMon, grupSat;
 			var arrowHelper, axesHelper, plaEquatorial, plaOrbita;
 			var folder1,folder4;
 			var quaternionTerra;
@@ -143,11 +169,11 @@
 			var angleRotTerra = 0;
 
 			// CONSTANTS TERRA            
-            const MU=398694790080000; // G * massa de la Terra, S.I.
+      const MU=398694790080000; // G * massa de la Terra, S.I.
 			const rTerra=6458428; // radi de l'esfera terrestre, metres
 			const segonsDia=23*3600+56*60+4; // nombre de segons que té un dia
 			const omega=2*Math.PI/segonsDia; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
-            const angleTerra= 0 //23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
+      const angleTerra= 0 //23.4369*Math.PI/180; // angle d'inclinació de l'eix terrestre, rad
 			const omegaSol=omega/365.256363; // freqüencia angular de rotació de la Terra entorn al seu eix, rad/s
 
 			// CONSTANTS SIMULACIÓ
@@ -155,7 +181,7 @@
 			const maxPointsGraph = 2048; // màxim de punts en les gràfiques
 			const shiftCount=1;	// al cap de quants renderings s'agafa un punt de la trajectòria
 			const midaSatelit=0.04; // escala d'ampliació del OBJ del satèl·lit
-            const centreX=0; // origen en X del mapa 2D de la Terra
+      const centreX=0; // origen en X del mapa 2D de la Terra
 			const centreY=0; // origen en Y del mapa 2D de la Terra
 			const marge2D=0.1; // marge horitzontal i vertical entre els límits del tauler de gràfiques i els eixos XY
 			const mAmplada=1.5; // amplada del mapa 2D de la Terra
@@ -172,7 +198,6 @@
 			const ritmeDiscCamera=-0.002;
 			const ritmeDiscRadar=-0.002;
 			const ritmeDiscTransfer=0.01;
-
 			const ritmeBateriaCamera=-0.001;
 			const ritmeBateriaRadar=-0.002;
 			const ritmeBateriaDiscs=-0.0001;
@@ -181,7 +206,7 @@
 
             // VARIABLES DE SIMULACIÓ	
 			var ambWebgl;			
-            var temps, previousTime, interval; // en segons
+      		var temps, previousTime, interval; // en segons
 			var count; // comptador de punts en la trajectòria
 			var countGraph; // comptador de punts en les gràfiques
 			var steps; // comptador de renderings
@@ -215,57 +240,43 @@
 
 			function initGUI() {
 				var menuDiv = document.getElementById( 'dat' );
-				gui = new dat.GUI({autoPlace: false, width:350});
+				gui = new dat.GUI({autoPlace: false, width:250});
 				menuDiv.appendChild( gui.domElement );
-				folder0 = gui.addFolder( 'SELECCIÓ DE SATÈL·LIT' );
+				guiDret = new dat.GUI({width:250});
+
+				folder0 = guiDret.addFolder( 'SATÈL·LIT' );
 				folder1 = gui.addFolder( 'ÒRBITA DEL SATÈL·LIT' );
-				folder1.add( parametres, "longitud", 0, 360, 1 ).name("Longitud node asc.").onChange(canviaParametres);
-				folder1.add( parametres, "inclinacio", 0, 180, 1 ).name("Inclinació").onChange(canviaParametres);
-				folder1.add( parametres, "argPerigeu", 0, 360, 1 ).name("Arg. del perigeu").onChange( canviaParametres);
-				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange(canviaSemieix);
-				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange(canviaExcentricitat);
-				folder1.add( parametres, "anomalia", 0, 360, 1 ).name("Anomalia veritable").onChange(canviaParametres);
+				folder1.add( parametres, "infoParametres").name("Elements orbitals");
+				folder1.add( parametres, "longitud", 0, 360, 0.01 ).name("L. node ascendent").onChange(canviaParametres);
+				folder1.add( parametres, "inclinacio", 0, 180, 0.01 ).name("Inclinació").onChange(canviaParametres);
+				folder1.add( parametres, "argPerigeu", 0, 360, 0.01 ).name("Arg. del perigeu").onChange( canviaParametres);
+				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 1 ).name("Semieix major").onChange(canviaSemieix);
+				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.00001).name("Excentricitat").onChange(canviaExcentricitat);
+				folder1.add( parametres, "anomalia", 0, 360, 0.01 ).name("Anomalia veritable").onChange(canviaParametres);
 				
-				textPeriode=folder1.add( parametres, "display");
-				textPeriode.name("PERÍODE :");
-				textPeriode.domElement.hidden = true;
-				var estilPeriode = textPeriode.domElement.previousSibling.style;
-				//estilPeriode.backgroundColor = 'cyan';
-				//estilPeriode.color = 'black';
-				estilPeriode.textAlign = 'center';
-				estilPeriode.width= '100%';				folder1.add( parametres, "infoParametres").name("Elements orbitals");
-				
-				folder1.add( parametres, "ERA", 0, 360, 1).name("Angle rotació Terra").onChange(canviaParametres);
-				//folder1.__ul.childNodes[7].classList = 'boolean';
-				//folder1.__ul.childNodes[7].childNodes[0].childNodes[0].classList = 'longtext';
-				//var folder2 = gui.addFolder( 'ESTACIONS DE SEGUIMENT' );
-                //folder2.add( parametres, "radiProximitat", 100, 4000, 100 ).name("Radi de proximitat").onChange( canviaRadiProximitat );
-				//folder2.add( parametres, "afegirEstacio").name("Afegir estació");
-				//folder2.add( parametres, "eliminarEstacio").name("Eliminar estació");
-				var folder3 = gui.addFolder( 'SIMULACIÓ' );				
+				textPeriode=folder1.add( parametres, "display").name("PERÍODE");
+				textPeriode.domElement.childNodes[0].setAttribute("disabled", "true");	
+				folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
+				folder1.open();
+
+				var folder3 = guiDret.addFolder( 'SIMULACIÓ' );				
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png']).name("Tipus de mapa").onChange( canviaMapa );
+				botoIniciar = folder3.add( parametres, "pausa").name("I N I C I A");
+				estil = botoIniciar.domElement.previousSibling.style;
+				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				folder3.add( parametres, "veureEixos").name("Mostra eixos i plans").onChange( veureEixos );
 				folder3.add( parametres, "veureLine").name("Mostra trajectòria").onChange( veureLine );
-				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
-				botoIniciar = folder3.add( parametres, "pausa");
-				botoIniciar.name("I N I C I A");
-				estil = botoIniciar.domElement.previousSibling.style;
-				estil.backgroundColor = 'green';
-				estil.textAlign = 'center';
-				estil.width= '100%';
-				//folder1.open();
-                //folder2.open();
 				folder3.open();
-				//var guiDret = new dat.GUI({width:350});
 				//folder4 = guiDret.addFolder( 'EQUIPAMENT DEL SATÈL·LIT' );
 				//folder4.add( parametres, "panells", 1, 5, 1 ).name("Panells solars");
 				//folder4.add( parametres, "discs", 1, 5, 1 ).name("Unitats de disc");
 				//folder4.add( parametres, "cameres", 0, 5, 1 ).name("Càmeres òptiques");
 				//folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
 				//var folder5 = guiDret.addFolder( 'INFORMACIÓ ADDICIONAL' );
-				//folder5.add( parametres, "infoSatelit").name("Informació del satèl·lit");	
+				//folder5.add( parametres, "infoSatelit").name("Informació del satèl·lit");
 				//folder5.add( parametres, "infoSensors").name("Informació del sensors");		
 				//folder5.open();
+
 				addCategories();				
 				canviaCategoria();		
 			}
@@ -281,15 +292,15 @@
 					excentricitat: 0, // excentricitat de l'òrbita (entre 0 i 1)
 					anomalia:0, //
 					ERA:0,
-                    radiProximitat: 4000, // radi de la zona de proximitat a l'estació, km
+          			radiProximitat: 4000, // radi de la zona de proximitat a l'estació, km
 					afegirEstacio: botoAfegirEstacio,
 					eliminarEstacio: botoEliminarEstacio,
-					mapa: 'mapa_fisic.png', // fitxer de textura del mapa
-					tipus: 'Estacions espacials',
+					mapa: '8k_earth_daymap.jpg', // fitxer de textura del mapa
+					tipus: 'NewSpace Catalunya',
 					veureLine: true, // veure o no la trajectòria
 					veureEixos: true, // veure o no els eixos i plans
 					velAnimacio: 3, // velocitat de l'animació
-					display : true, // visualitzador del període del satèl·lit. El valor booleà no té cap efecte
+					display : "", // visualitzador del període del satèl·lit. El valor booleà no té cap efecte
 					pausa: botoPausa, // botó per pausar o reprendre la simulació
 					//infoSatelit: botoInfoSatelit, // finestra modal amb el satèl·lit 3D
 					//infoSensors: botoInfoSensors, // finestra modal amb informació sobre els sensors
@@ -301,8 +312,8 @@
 				};
 
 				container = document.getElementById( 'container' );
-                // CÀMERA
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+        // CÀMERA
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
 				camera.up.set(0,0,1);
 				camera.position.x = 8; // red
 				camera.position.y = -8; // green
@@ -316,28 +327,28 @@
 
 				scene2D = new THREE.Scene();
 
-                // LLUM
-                var ambientLight = new THREE.AmbientLight( 0xfffffff ); 
-                scene.add(ambientLight);
+				// LLUM
+				var ambientLight = new THREE.AmbientLight( 0xfffffff ); 
+				scene.add(ambientLight);
 
-                var directionalLight = new THREE.DirectionalLight( 0xffffff, 1);
-				
-                vectorLlum=new THREE.Vector3(0,-1,0);
+				var directionalLight = new THREE.DirectionalLight( 0xffffff, 1);
+
+				vectorLlum=new THREE.Vector3(0,-1,0);
 				directionalLight.position.set(-vectorLlum.x, -vectorLlum.y, -vectorLlum.z);
 				directionalLight.castShadow=true;
-                scene.add( directionalLight );     
+				scene.add( directionalLight );     
 
-                grupMon=new THREE.Group();
+				grupMon=new THREE.Group();
 
 				// EIXOS DE COORDENADES
 				axesHelper = new THREE.AxesHelper(1.1);
 				scene.add( axesHelper );
 
-                // EIX TERRA
-                var dir = new THREE.Vector3(0,Math.sin(angleTerra),Math.cos(angleTerra));
-                var origin = new THREE.Vector3( 0, 0, 0 );
-                arrowHelper = new THREE.ArrowHelper( dir, origin, 1.1, 0x555555, 0.075, 0.05);
-                scene.add( arrowHelper );
+				// EIX TERRA
+				var dir = new THREE.Vector3(0,Math.sin(angleTerra),Math.cos(angleTerra));
+				var origin = new THREE.Vector3( 0, 0, 0 );
+				arrowHelper = new THREE.ArrowHelper( dir, origin, 1.1, 0x555555, 0.075, 0.05);
+				scene.add( arrowHelper );
 
 				// TERRA I MAPA 2D
 				canviaMapa();
@@ -463,9 +474,9 @@
 					//scene2D.add( llegenda );
 				} );
 
-                // MÓN
-                grupMon.setRotationFromAxisAngle(new THREE.Vector3(1,0,0),-angleTerra);
-                scene.add(grupMon);
+				// MÓN
+				grupMon.setRotationFromAxisAngle(new THREE.Vector3(1,0,0),-angleTerra);
+				scene.add(grupMon);
 			
 				// RENDERER
 				if (Detector.webgl) {
@@ -775,13 +786,13 @@
 
 			function canviaSemieix() {
 				var eMax=1-satMin*rTerra/(parametres.aOrbita*1000);
-				folder1.__controllers[4].max(eMax);
+				folder1.__controllers[5].max(eMax);
 				canviaParametres();
 			}
 
 			function canviaExcentricitat() {
 				var aMin=satMin*rTerra/(1-parametres.excentricitat)/1000;
-				folder1.__controllers[3].min(aMin);
+				folder1.__controllers[4].min(aMin);
 				canviaParametres();
 			}
 
@@ -810,16 +821,17 @@
 				var hores=Math.floor(periodeSat/3600);
 				var minuts=Math.floor((periodeSat - 3600 * hores)/60);
 				var segons=Math.floor(periodeSat-hores*3600-minuts*60 );
-				var stringPeriode="PERÍODE : "+ hores + " hores " + minuts + " minuts " + segons + " segons";
-				if (textPeriode!=null) {
-					textPeriode.name(stringPeriode);
-				}	
+				var stringPeriode= hores + "h " + minuts + "' " + segons + "''";
+				folder1.__controllers[7].setValue(stringPeriode);
+				//if (textPeriode!=null) {
+				//	textPeriode.name(stringPeriode);
+				//}	
 
-			// SAT 3D
+				// SAT 3D
 				var mida=0.02*pOrbita/rTerra;
 				sat3D.scale.set(mida,mida,mida);			
 
-			// ÒRBITA
+				// ÒRBITA
 				grupMon.remove(orbita);
 				var curve = new THREE.EllipseCurve((pOrbita-aOrbita)/rTerra,0,aOrbita/rTerra,bOrbita/rTerra,0,2*Math.PI,false,0);
 				var points = curve.getPoints(360);
@@ -828,17 +840,17 @@
 				orbita.quaternion.copy(quaternionTerra);
 				grupMon.add(orbita);	
 				
-			// PLA ORBITA
+				// PLA ORBITA
 				if(parametres.veureEixos) {
 					grupMon.remove(plaOrbita);
 				}
-					quaternionPla=new THREE.Quaternion().multiplyQuaternions(quaternionLongitud,quaternionInclinacio);				
-					plaOrbita.quaternion.copy(quaternionPla);
+				var quaternionPla=new THREE.Quaternion().multiplyQuaternions(quaternionLongitud,quaternionInclinacio);				
+				plaOrbita.quaternion.copy(quaternionPla);
 				if(parametres.veureEixos) {
 					grupMon.add(plaOrbita);
 				}
 				
-			// TRAJECTÒRIA
+				// TRAJECTÒRIA
 				scene2D.remove(trajectoria);
 				geometryTrajectoria = new THREE.BufferGeometry();
 				pos2D = new Float32Array(maxPoints * 3);
@@ -847,7 +859,7 @@
 				trajectoria = new THREE.Line(geometryTrajectoria, materialTrajectoria);
 				scene2D.add(trajectoria);
 
-			// LINK 2D
+				// LINK 2D
 				for(i=0;i<numEstacions;i++) {
 					scene2D.remove(link2D[i]);
 					geometryLink2D = new THREE.BufferGeometry();
@@ -859,7 +871,7 @@
 					}
 				}
 
-			// LINK 3D
+				// LINK 3D
 				for(i=0;i<numEstacions;i++) {
 					scene.remove(link3D[i]);
 					geometryLink3D = new THREE.BufferGeometry();
@@ -869,7 +881,7 @@
 					//scene.add(link3D[i]);
 				}
 
-			// UNITATS DE DISC
+				// UNITATS DE DISC
 				scene2D.remove(discs);
 				geometryDiscs = new THREE.BufferGeometry();
 				posDiscs = new Float32Array(maxPointsGraph * 3);
@@ -878,7 +890,7 @@
 				discs = new THREE.Line(geometryDiscs, materialDiscs);
 				//scene2D.add(discs);
 
-			// BATERIA
+				// BATERIA
 				scene2D.remove(bateria);
 				geometryBateria = new THREE.BufferGeometry();
 				posBateria = new Float32Array(maxPointsGraph * 3);
@@ -887,7 +899,7 @@
 				bateria = new THREE.Line(geometryBateria, materialBateria);
 				//scene2D.add(bateria);
 		
-			// REININCI SIMULACIÓ
+				// REININCI SIMULACIÓ
 
 				previousTime=new Date().getTime();
 				temps=0;
@@ -900,27 +912,42 @@
 				angleEscombrat=Math.PI/180*(parametres.anomalia);
 				veureLine();
 				
-			// POSICIÓ TERRA
+				// POSICIÓ TERRA
 
 				var vectorSat3D = new THREE.Vector3();
 				var radi;
 				if(mode == 'TLE') {
 					var distanciaProva;
-					var distanciaSat = pOrbita/rTerra;
+					var distanciaSat = (pOrbita/rTerra)**2;
+					var graus;
+					// Acotar entre 0 i 360 graus i després acotar 2 decimals
 					for(i=0;i<360;i++){
 						an = i * Math.PI/180;
 						radi=pOrbita/rTerra*(1+eOrbita)/(1+eOrbita*Math.cos(an));
 						sat3D.position.x=radi*Math.cos(an);
 						sat3D.position.y=radi*Math.sin(an);
 						sat3D.getWorldPosition(vectorSat3D);
-						distanciaProva = Math.sqrt((satTLEx-vectorSat3D.x)**2+(satTLEy-vectorSat3D.y)**2+(satTLEz-vectorSat3D.z)**2);
+						distanciaProva = (satTLEx-vectorSat3D.x)**2+(satTLEy-vectorSat3D.y)**2+(satTLEz-vectorSat3D.z)**2;
+						if(distanciaProva < distanciaSat) {
+							distanciaSat = distanciaProva;
+							graus = i;
+						}
+					}
+					for(i=0;i<200;i++){
+						an = (graus -1 + i/100) * Math.PI/180;
+						radi=pOrbita/rTerra*(1+eOrbita)/(1+eOrbita*Math.cos(an));
+						sat3D.position.x=radi*Math.cos(an);
+						sat3D.position.y=radi*Math.sin(an);
+						sat3D.getWorldPosition(vectorSat3D);
+						distanciaProva = (satTLEx-vectorSat3D.x)**2+(satTLEy-vectorSat3D.y)**2+(satTLEz-vectorSat3D.z)**2;
 						if(distanciaProva < distanciaSat) {
 							distanciaSat = distanciaProva;
 							angleEscombrat = an;
 						}
 					}
+
 				} else { // mode manual
-					angleRotTerra = parametres.ERA * Math.PI / 180;
+					angleRotTerra = - parametres.ERA * Math.PI / 180;
 				}
 				radi = pOrbita/rTerra*(1+eOrbita)/(1+eOrbita*Math.cos(angleEscombrat));
 				sat3D.position.x=radi*Math.cos(angleEscombrat);
@@ -1037,9 +1064,9 @@
 					mapa2D.position.y=centreY;
 					mapa2D.position.z=0;
 					scene2D.add( mapa2D );
-                    // TERRA
+          // TERRA
 					grupMon.remove( meshTerra );
-					var geometryTerra = new THREE.SphereGeometry( 1, 20, 20 );
+					var geometryTerra = new THREE.SphereGeometry( 1, 40, 40 );
 					geometryTerra.rotateX(Math.PI/2);
 					var materialTerra = new THREE.MeshLambertMaterial({ map: texture, overdraw: true });
 					meshTerra = new THREE.Mesh( geometryTerra, materialTerra );
@@ -1222,10 +1249,10 @@
 			}
 
 			function addCategories() {
-				categories=["Estacions espacials","Els més brillants","Meteorològics","Cerca i rescat","CubeSats","Seguiment de desastres","Geosíncrons","Localització (GPS)","Localització (Galileo)","Científics", "Educatius","Militars"];
-				urls=["stations","visual","weather","sarsat","cubesat","dmc","geo","gps-ops","galileo","science", "education","military"];
-				folder0.add(parametres, "tipus", categories).name('Tipus de satel·lit').onChange(canviaCategoria);
-				folder0.add(parametres, "nomSats", nomSatelit).name('Nom del satèl·lit').onChange( canviaSatelit );
+				categories=["NewSpace Catalunya", "Estacions espacials","Els més brillants","Meteorològics","Cerca i rescat","CubeSats","Seguiment de desastres","Geosíncrons","Localització (GPS)","Localització (Galileo)","Científics", "Educatius","Militars"];
+				urls=["active","stations","visual","weather","sarsat","cubesat","dmc","geo","gps-ops","galileo","science", "education","military"];
+				folder0.add(parametres, "tipus", categories).name('Tipus').onChange(canviaCategoria);
+				folder0.add(parametres, "nomSats", nomSatelit).name('Nom').onChange( canviaSatelit );
 				folder0.open();
 			}
 
@@ -1245,29 +1272,55 @@
 				addTLE(numCategoria);
 			}
 
-			function addTLE(numCat) {								
+			function addTLE(numCat) {		
+				try {
+					let carregant = document.getElementById("carregant");
+					carregant.style.display = "unset";
+					carregant.style.animationPlayState = "running";	
+				} catch {
+					console.log("Error: iniciant");
+				}					
 				fetch('downloadLines.php?tipus='+ urls[numCat])
 				.then(response => response.text())
 				.then(response => 	{	nomSatelit = [];
-										var resposta = response.split('\r\n');
-										for (i=0;i<resposta.length/3-1;i++) {
-											nomSatelit[i] = resposta[3*i+1];
-										}
-										nomSatelit.sort();
-										cadenaSatelits = [];
-										for (i=0;i<nomSatelit.length;i++) {
-											for (j=0;j<nomSatelit.length;j++) {
-												if(resposta[3*j+1]===nomSatelit[i]) {
-													cadenaSatelits[3*i+1] = resposta[3*j+1];
-													cadenaSatelits[3*i+2] = resposta[3*j+2];
-													cadenaSatelits[3*i+3] = resposta[3*j+3];
-												}
-											}	
-										}
-										$("select:gt(0)").empty();
-										for (i=0;i<nomSatelit.length;i++) {
-											$("select:gt(0)").append('<option value="'+nomSatelit[i]+'">'+nomSatelit[i]+'</option>').css('width', '100%');											;
-										}										
+					var resposta = response.split('\r\n');
+					var esNewSpace;
+					for (i=0;i<resposta.length/3-1;i++) {
+						esNewSpace = false;
+						if (resposta[3*i+1].includes("ISS (ZARYA)")) {
+							resposta[3*i+1] = "Estació Espacial Internacional";
+							esNewSpace = true;
+						}
+						if (resposta[3*i+1].includes("3B5GSAT (SATELIOT 1)")) {
+							resposta[3*i+1] = "Enxaneta";
+							esNewSpace = true;
+						}
+						if (resposta[3*i+1].includes("SCATSAT 1")) {
+							resposta[3*i+1] = "Menut (en construcció)";
+							esNewSpace = true;
+						}
+
+						if (numCat>0 || esNewSpace) {
+							nomSatelit.push(resposta[3*i+1]);
+						}
+					}
+					nomSatelit.sort();
+					cadenaSatelits = [];
+					for (i=0;i<nomSatelit.length;i++) {
+						for (j=0;j<resposta.length/3-1;j++) {
+							if(resposta[3*j+1]===nomSatelit[i]) {
+								cadenaSatelits[3*i+1] = resposta[3*j+1];
+								cadenaSatelits[3*i+2] = resposta[3*j+2];
+								cadenaSatelits[3*i+3] = resposta[3*j+3];
+							}
+						}	
+					}
+					$("select:gt(0)").empty();
+					for (i=0;i<nomSatelit.length;i++) {
+						$("select:gt(0)").append('<option value="'+nomSatelit[i]+'">'+nomSatelit[i]+'</option>').css('width', '100%');											;
+					}
+					carregant.style.animationPlayState = "paused";
+								carregant.style.display = "none";										
 				})
 				.then(response => {
 						canviaSatelit();
@@ -1285,7 +1338,7 @@
 				estil.backgroundColor = 'green';
 				botoIniciar.name("I N I C I A");
 				numSat=0;
-				for (i=0;i<cadenaSatelits.length/3;i++) {
+				for (i=0;i<nomSatelit.length;i++) {
 					if(parametres.nomSats===nomSatelit[i]) {
 						numSat=i;
 					}				
@@ -1299,16 +1352,16 @@
 
 				var satrec = satellite.twoline2satrec(line1,line2);
 
-				folder1.__controllers[0].setValue(satrec.nodeo*180/Math.PI);
-				folder1.__controllers[1].setValue(satrec.inclo*180/Math.PI);
-				folder1.__controllers[2].setValue(satrec.argpo*180/Math.PI);
-				folder1.__controllers[3].setValue(Math.cbrt(MU/(satrec.no/60)**2)/1000);
-				folder1.__controllers[4].setValue(satrec.ecco);
+				folder1.__controllers[1].setValue(satrec.nodeo*180/Math.PI);
+				folder1.__controllers[2].setValue(satrec.inclo*180/Math.PI);
+				folder1.__controllers[3].setValue(satrec.argpo*180/Math.PI);
+				folder1.__controllers[4].setValue(Math.cbrt(MU/(satrec.no/60)**2)/1000);
+				folder1.__controllers[5].setValue(satrec.ecco);
 				//var trueAnomaly = 180/Math.PI * meanAnomaly2true(satrec.mo, satrec.ecco, 1e-15, 1000);
 				//if(trueAnomaly<0) {
 				//	trueAnomaly = trueAnomaly + 360;
 				//}
-				//folder1.__controllers[5].setValue(trueAnomaly);
+				//folder1.__controllers[6].setValue(trueAnomaly);
 		
 				var ara = new Date();
 				var positionAndVelocity = satellite.propagate(satrec, ara);
@@ -1328,12 +1381,12 @@
 				posGreenwich.z = 0;
 				var posEcf   = satellite.eciToEcf(posGreenwich, gmst);
 				angleRotTerra = Math.atan2(posEcf.y,posEcf.x);
-				folder1.__controllers[6].setValue(angleRotTerra * 180 / Math.PI);
-				if (angleRotTerra<0) {
-					angleRotTerra=angleRotTerra+ 2 * Math.PI;
+				if (angleRotTerra>0) {
+					angleRotTerra=angleRotTerra - 2 * Math.PI;
 				}
-				folder1.__controllers[8].setValue(angleRotTerra * 180 / Math.PI);
-				folder1.__controllers[5].setValue(angleEscombrat * 180 / Math.PI);
+				console.log('angleTerra: ' + (-angleRotTerra * 180 / Math.PI));
+				folder1.__controllers[8].setValue(-angleRotTerra * 180 / Math.PI);
+				folder1.__controllers[6].setValue(angleEscombrat * 180 / Math.PI);
 				canviaParametres();
 				mode = 'manual';
 				console.log('mode ' + mode);
@@ -1361,16 +1414,16 @@
 						console.log(arraySats[numSat]);
 					}				
 				}
-				folder1.__controllers[0].setValue(arraySats[numSat]['RA_OF_ASC_NODE']);
-				folder1.__controllers[1].setValue(arraySats[numSat]['INCLINATION']);
-				folder1.__controllers[2].setValue(arraySats[numSat]['ARG_OF_PERICENTER']);
-				folder1.__controllers[3].setValue(Math.cbrt(MU/(arraySats[numSat]['MEAN_MOTION']*2*Math.PI/86400)**2)/1000);
-				folder1.__controllers[4].setValue(arraySats[numSat]['ECCENTRICITY']);
+				folder1.__controllers[1].setValue(arraySats[numSat]['RA_OF_ASC_NODE']);
+				folder1.__controllers[2].setValue(arraySats[numSat]['INCLINATION']);
+				folder1.__controllers[3].setValue(arraySats[numSat]['ARG_OF_PERICENTER']);
+				folder1.__controllers[4].setValue(Math.cbrt(MU/(arraySats[numSat]['MEAN_MOTION']*2*Math.PI/86400)**2)/1000);
+				folder1.__controllers[5].setValue(arraySats[numSat]['ECCENTRICITY']);
 				var trueanomaly = 180/Math.PI * meanAnomaly2true(arraySats[numSat]['MEAN_ANOMALY']*Math.PI/180, parametres.excentricitat, 1e-15, 1000);
 				if (trueanomaly < 0) {
 					trueanomaly = trueanomaly + 360;
 				}
-                folder1.__controllers[5].setValue(trueanomaly);
+                folder1.__controllers[6].setValue(trueanomaly);
 				canviaParametres();
 			}	*/
 	
@@ -1390,6 +1443,7 @@
 
 
 		</script>
+		<div id="carregant"></div>
 	</body>
 </html>
 

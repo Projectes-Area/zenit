@@ -17,6 +17,7 @@
 				height: 100%;
 				width: 100%;
 				display: flex;
+				background:black;
 			}
 			#content {
 				width: 50%;
@@ -31,22 +32,11 @@
    				background-color: white;
    				width: 75% !important;
 			}
-
 			.modal-header{
    				background-color: rgb(224, 236, 247);
 			}
 			.modal-footer{
   				clear:both;
-			}
-			.dg .c input[type=text] {                                                    
-				line-height:normal;                                                                  
-			} 
-			.dg .c div {
-				box-sizing: content-box;                                                             
-			}
-			.dg li.title {
-				color:rgb(175,0,0);
-				font-size:small;
 			}
 			.center {
 				display: block;
@@ -58,8 +48,31 @@
 				border:1px solid #FFFFFF;
 				width:400px;
 			}	
+			.dg .c {
+				width: 45% !important;
+			}
+			.dg .c div {
+				box-sizing: content-box;                                                             
+			}
+			.dg .c select {
+				color: black;
+				font-size:small;
+				width: 170% !important;
+				margin-left: -70px;
+			}
+			.dg .c input[type=text] {                                                    
+				line-height:normal;                                                                  
+			} 
+			.dg .c .slider {
+				width: 50%;
+			}
+			.dg li.title {
+				color:rgb(175,0,0);
+				font-size:small;
+			}
 			.dg .property-name {
 				font-size:small;
+				width: 55% !important;
 			}
 			.dg .cr.boolean .property-name {
 				font-size:small;
@@ -67,8 +80,27 @@
 			.dg .cr.function .property-name {
 				background-color: green;
 				text-align: center;
-				width: 100%;
+				width: 100% !important;
 				font-size:medium;
+			}
+			.dg .cr.number input[type=text] {
+				width: 45%;
+			}
+
+			#status {
+				position: absolute;
+				top: 6px;
+				width: 300px;
+				height:154px;
+				z-index: 100;
+				display: none; /* block;*/
+				background:black;
+				border-color: white;
+				border-width: 5px;
+				border-style: solid;
+				padding: 5px;
+				color: white;
+				font-size: small;
 			}
 		</style>
 		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
@@ -122,6 +154,16 @@
 			</div>
 		</div> 
 
+		<div id="status">
+			Missió: <span id="nom_missio">-</span><br>
+			Estat de la missió: <span id="estat_missio">No assignada</span><br>
+			Temps disponible: <span id="temps_disponible">-</span><br>
+			Assoliment: <span id="niv_misssio">0</span>%
+			<hr style="margin-top:10px;margin-bottom:10px;margin-left:-10px;margin-right:-10px;">
+			Bateries: <span id="niv_bateria">50</span>%<br>
+			Discs: <span id="niv_discs">100</span>%
+		</div>
+
 		<script src="https://code.jquery.com/jquery-1.12.4.js"></script>     
 
 		<!-- Bootstrap -->
@@ -153,6 +195,7 @@
 			var geometrySat, geometryLink3D, materialLink3D, materialOrbita, geometryEstacio, geometryEstacio3D, materialEstacio3D;
 			var textPeriode;
             var grupMon;
+			var arrowHelper, axesHelper, plaEquatorial, plaOrbita;
 			var folder1,folder4;
 			var quaternionTerra;
 			var estacio3D=[];
@@ -177,6 +220,7 @@
 			var sensor=[];
 			var sensorsIniciats=false;
 			var numSensors=0;
+			var angleRotTerra=0;
 
 			// CONSTANTS TERRA            
             const MU=398694790080000; // G * massa de la Terra, S.I.
@@ -250,25 +294,23 @@
 			var totalDis=0;
 
 			function initGUI() {
-				var menuDiv = document.getElementById( 'dat' );
-				var gui = new dat.GUI({autoPlace: false, width:350});
+				var menuDiv = document.getElementById('dat');
+				var gui = new dat.GUI({autoPlace: false, width:250});
 				menuDiv.appendChild( gui.domElement );
 				folder1 = gui.addFolder( 'ÒRBITA DEL SATÈL·LIT' );
-				folder1.add( parametres, "longitud", 0, 360, 1 ).name("Longitud node asc.").onChange( canviaParametres );
-				folder1.add( parametres, "inclinacio", 0, 180, 1 ).name("Inclinació").onChange( canviaParametres );
-				folder1.add( parametres, "argPerigeu", 0, 360, 1 ).name("Arg. del perigeu").onChange( canviaParametres );
-				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 100 ).name("Semieix major").onChange( canviaSemieix );
-				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.01 ).name("Excentricitat").onChange( canviaExcentricitat );
+				folder1.add( parametres, "infoParametres").name("Elements orbitals");
+				folder1.add( parametres, "longitud", 0, 360, 0.01 ).name("L. node ascendent").onChange( canviaParametres );
+				folder1.add( parametres, "inclinacio", 0, 180, 0.01 ).name("Inclinació").onChange( canviaParametres );
+				folder1.add( parametres, "argPerigeu", 0, 360, 0.01 ).name("Arg. del perigeu").onChange( canviaParametres );
+				folder1.add( parametres, "aOrbita", satMin*rTerra/1000, 50000, 1 ).name("Semieix major").onChange( canviaSemieix );
+				folder1.add( parametres, "excentricitat", 0, 1-satMin*rTerra/parametres.aOrbita/1000, 0.00001 ).name("Excentricitat").onChange( canviaExcentricitat );
 				//folder1.add( parametres, "nSat", 1, maxSat, 1 ).name("Satèl·lits en òrbita").onChange( canviaNombre );
 				//folder1.add( parametres, "nOrb", 1, maxSat, 1 ).name("Quantitat d'òrbites").onChange( canviaNombre );
-                folder1.add( parametres, "anomalia", 0, 360, 1 ).name("Anomalia veritable").onChange( canviaAnomalia );
-				textPeriode=folder1.add( parametres, "display");
-				textPeriode.name("PERÍODE :");
-				textPeriode.domElement.hidden = true;
-				var estilPeriode = textPeriode.domElement.previousSibling.style;
-				estilPeriode.textAlign = 'center';
-				estilPeriode.width= '100%';
-				folder1.add( parametres, "infoParametres").name("Elements orbitals");
+                folder1.add( parametres, "anomalia", 0, 360, 0.01 ).name("Anomalia veritable").onChange( canviaAnomalia );
+				textPeriode=folder1.add( parametres, "display").name("PERÍODE");
+				textPeriode.domElement.childNodes[0].setAttribute("disabled", "true");
+				
+				folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
 				var folder2 = gui.addFolder( 'ESTACIONS DE SEGUIMENT' );
                 folder2.add( parametres, "radiProximitat", 100, 4000, 100 ).name("Radi de proximitat").onChange( canviaRadiProximitat );
 				folder2.add( parametres, "afegirEstacio").name("Afegir estació");
@@ -282,36 +324,35 @@
 				//folder7.open();
 				//*/
 				var folder3 = gui.addFolder( 'SIMULACIÓ' );	
+				botoIniciar = folder3.add( parametres, "pausa").name("I N I C I A");
+				estil = botoIniciar.domElement.previousSibling.style;
 					
+				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
 				//folder3.add( parametres, "infoInstruccions").name("Instruccions");		
 				//folder3.add( parametres, "mapa", [ 'mapa_simple.png','mapa_fisic.png', 'mapa_politic.png','mapa_gel.png' ]).name("Tipus de mapa").onChange( canviaMapa );
-				folder3.add( parametres, "velAnimacio",1,10,1).name("Velocitat d'animació").onChange( canviaParametres );
-				botoIniciar = folder3.add( parametres, "pausa");
-				botoIniciar.name("I N I C I A");
-				estil = botoIniciar.domElement.previousSibling.style;
-				estil.backgroundColor = 'green';
-				estil.textAlign = 'center';
-				estil.width= '100%';
+				folder3.add( parametres, "veureEixos").name("Mostra eixos i plans").onChange( veureEixos );
 				//folder1.open();
                 //folder2.open();
 				//folder6.open();
 				folder3.open();
 				
-				var guiDret = new dat.GUI({width:300});
-				folder4 = guiDret.addFolder( 'EQUIPAMENT DEL SATÈL·LIT' );
-				folder4.add( parametres, "panells", 1, 5, 1 ).name("Panells solars");
-				folder4.add( parametres, "discs", 1, 5, 1 ).name("Unitats de disc");
-				folder4.add( parametres, "infoSensors").name("Sensors");
-				//folder4.add( parametres, "cameres", 0, 5, 1 ).name("Càmeres òptiques");
-				//folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
-				//folder4.open();
-				var folder5 = guiDret.addFolder( 'INFORMACIÓ ADDICIONAL' );
+				var guiDret = new dat.GUI({width:250});
+				var folder5 = guiDret.addFolder( 'MISSIÓ' );
 				//folder5.add( parametres, "infoSatelit").name("Satèl·lit");
 				folder5.add( parametres, "infoInstruccions").name("Instruccions");		
 				//folder5.add( parametres, "infoMissions").name("Missions");						
 				folder5.add( parametres, "selMissio").name("Assignació de missió");					
 				folder5.open();	
-				//$('.ul .close-button').html("Plega/desplega panell");			
+				//$('.ul .close-button').html("Plega/desplega panell");	
+				folder4 = guiDret.addFolder( 'EQUIPAMENT DEL SATÈL·LIT' );
+				folder4.add( parametres, "infoSensors").name("Sensors");
+				folder4.add( parametres, "panells", 1, 5, 1 ).name("Panells solars");
+				folder4.add( parametres, "discs", 1, 5, 1 ).name("Unitats de disc");
+				
+				//folder4.add( parametres, "cameres", 0, 5, 1 ).name("Càmeres òptiques");
+				//folder4.add( parametres, "radars", 0, 5, 1 ).name("Sistemes de radar");
+				//folder4.open();
+						
 			}
 
 			init();
@@ -319,11 +360,12 @@
 				// PARÀMETRES DE SIMULACIÓ
 				parametres = {
 					longitud: 0, // de l'òrbita del satèl·lit, graus
-					inclinacio: 45, // de l'òrbita del satèl·lit, graus
+					inclinacio: 20, // de l'òrbita del satèl·lit, graus
 					argPerigeu: 0, // argument del perigeu, graus
 					aOrbita: 10000, // semieix major de l'òrbita el·líptica, km
 					excentricitat: 0, // excentricitat de l'òrbita (entre 0 i 1)
 					anomalia:0, // anomalia veritable, graus
+					ERA:0,
                     nSat:1, // quantitat de satèl·lits a l'òrbita
 					nOrb:1, // quantitat d'òrbites
                     radiProximitat: 3000, // radi de la zona de proximitat a l'estació, km
@@ -333,9 +375,10 @@
 					afegirZona: botoAfegirZona,
 					eliminarZona: botoEliminarZona,
 					mapa2D: 'mapa_fisic_silueta.png', // fitxer de textura del mapa
-					mapa3D: 'mapa_fisic.png', // fitxer de textura del mapa
+					mapa3D: '8k_earth_daymap.jpg', // fitxer de textura del mapa
+					veureEixos: true, // veure o no els eixos i plans
 					velAnimacio: 3, // velocitat de l'animació
-					display : true, // visualitzador del període del satèl·lit. El valor booleà no té cap efecte
+					display : '', // visualitzador del període del satèl·lit.
 					pausa: botoPausa, // botó per pausar o reprendre la simulació
 					//infoSatelit: botoInfoSatelit, // finestra modal amb el satèl·lit 3D
 					infoSensors: botoInfoSensors, // finestra modal amb informació sobre els sensors
@@ -352,17 +395,17 @@
 				container = document.getElementById( 'content' );
 				container2 = document.getElementById( 'content2' );
                 // CÀMERA
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
 				camera.up.set(0,0,1);
-				camera.position.x = 4; // red
-				camera.position.y = 0; // green
-				camera.position.z = 0; // blue
+				camera.position.x = 8; // red
+				camera.position.y = -8; // green
+				camera.position.z = 1; // blue
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x131313 );
 
                 // LLUM
-                var ambientLight = new THREE.AmbientLight( 0x444444 ); // 10%
+                var ambientLight = new THREE.AmbientLight( 0xfffffff ); // 10%
                 scene.add(ambientLight);
 
                 var directionalLight = new THREE.DirectionalLight( 0xffffff, 1);
@@ -370,12 +413,16 @@
                 vectorLlum=new THREE.Vector3(-1,0,0);
 				directionalLight.position.set(-vectorLlum.x, -vectorLlum.y, -vectorLlum.z);
 				directionalLight.castShadow=true;
-                scene.add( directionalLight );     
+                scene.add( directionalLight ); 
+				
+				// EIXOS DE COORDENADES
+				axesHelper = new THREE.AxesHelper(1.1);
+				scene.add( axesHelper );				
 
                 // EIX TERRA
                 var dir = new THREE.Vector3(0,Math.sin(angleTerra),Math.cos(angleTerra));
                 var origin = new THREE.Vector3( 0, 0, 0 );
-                var arrowHelper = new THREE.ArrowHelper( dir, origin, 1.1, 0x555555, 0.075, 0.05);
+                arrowHelper = new THREE.ArrowHelper( dir, origin, 1.1, 0x555555, 0.075, 0.05);
                 scene.add( arrowHelper );
 
 				// TERRA I MAPA 2D
@@ -420,6 +467,17 @@
 				materialOrbita = new THREE.LineBasicMaterial( { color : 0xffffff } );
 				var geometryOrbita = new THREE.BufferGeometry();
 				orbita = new THREE.Line( geometryOrbita, materialOrbita );
+
+				// PLA EQUATORIAL
+				materialPlaEquatorial = new THREE.MeshPhongMaterial({color: 0xffff00, opacity: 0.5,transparent: true, side: THREE.DoubleSide});
+				var geometryPlaEquatorial = new THREE.PlaneGeometry( 8, 8 );
+				plaEquatorial = new THREE.Mesh( geometryPlaEquatorial, materialPlaEquatorial );
+				scene.add(plaEquatorial);
+
+				// PLA ÒRBITA
+				materialPlaOrbita = new THREE.MeshPhongMaterial({color: 0xff0000, opacity: 0.5,transparent: true, side: THREE.DoubleSide});
+				var geometryPlaOrbita = new THREE.PlaneGeometry( 8, 8 );
+				plaOrbita = new THREE.Mesh( geometryPlaOrbita, materialPlaOrbita );
 
 				// LINK 3D
 				/*materialLink3D = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
@@ -571,9 +629,10 @@
 				for(k=1;k<6;k++) {
 					//mapa[k] = L.map('mapa'+k,{zoomControl:false,scrollWheelZoom:false,dragging:false});
 					mapa[k] = L.map('mapa'+k,{scrollWheelZoom:false,dragging:false});
-				}	
-				initGUI();
-				
+				}
+				$('#status').css('left', parseInt($('#content').css('width')) - parseInt($('#status').css('width')));
+
+				initGUI();				
 			}
 
 			function mostraTros(i,j) {
@@ -931,17 +990,31 @@
 						}
 					}
 				}
-			}			
+			}
+			
+			function veureEixos() {
+				if(parametres.veureEixos) {
+					scene.add(arrowHelper);
+					scene.add(axesHelper);
+					scene.add(plaEquatorial);
+					grupMon.add(plaOrbita);
+				} else {
+					scene.remove(arrowHelper);
+					scene.remove(axesHelper);
+					scene.remove(plaEquatorial);
+					grupMon.remove(plaOrbita);
+				}  
+			}
 
 			function canviaSemieix() {
 				var eMax=1-satMin*rTerra/(parametres.aOrbita*1000);
-				folder1.__controllers[4].max(eMax);
+				folder1.__controllers[5].max(eMax);
 				canviaParametres();
 			}
 
 			function canviaExcentricitat() {
 				var aMin=satMin*rTerra/(1-parametres.excentricitat)/1000;
-				folder1.__controllers[3].min(aMin);
+				folder1.__controllers[4].min(aMin);
 				canviaParametres();
 			}
 
@@ -977,10 +1050,9 @@
 				var hores=Math.floor(periodeSat/3600);
 				var minuts=Math.floor((periodeSat - 3600 * hores)/60);
 				var segons=Math.floor(periodeSat-hores*3600-minuts*60 );
-				var stringPeriode="PERÍODE : "+ hores + " hores " + minuts + " minuts " + segons + " segons";
-				if (textPeriode!=null) {
-					textPeriode.name(stringPeriode);
-				}				
+				var stringPeriode= hores + "h " + minuts + "' " + segons + "''";
+				folder1.__controllers[7].setValue(stringPeriode);
+			
 
 			// SAT 2D, 3D
 				var mida=0.02*pOrbita/rTerra;
@@ -1005,6 +1077,17 @@
 				orbita = new THREE.Line( geometryOrbita, materialOrbita );
 				orbita.quaternion.copy(quaternionTerra);
 				grupMon.add(orbita);
+
+			// PLA ORBITA
+				if(parametres.veureEixos) {
+					grupMon.remove(plaOrbita);
+				}
+				var quaternionPla=new THREE.Quaternion().multiplyQuaternions(quaternionLongitud,quaternionInclinacio);				
+				plaOrbita.quaternion.copy(quaternionPla);
+				if(parametres.veureEixos) {
+					grupMon.add(plaOrbita);
+				}	
+			
 				
 			// LINK 3D (satèl·lit i, estació j)
                 /*for(i=0;i<maxSat;i++) {
@@ -1059,6 +1142,9 @@
 						}
 					}
 				}
+
+			// POSICIÓ TERRA
+				angleRotTerra = - parametres.ERA * Math.PI / 180;
 			}
 
 			function onWindowResize() {				
@@ -1074,6 +1160,7 @@
 				app.stage.scale.set(ratio, ratio);
 				app.stage.pivot.set(WIDTH/2, HEIGHT/2);
 				app.renderer.resize(WIDTH,HEIGHT);
+				$('#status').css('left', parseInt($('#content').css('width')) - parseInt($('#status').css('width')));
 			}
 
 			function animate() {
@@ -1090,7 +1177,7 @@
 				}
 
 				if(meshTerra!=null) {
-					var quaternionZ=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), omega*temps);
+					var quaternionZ=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1), omega*temps - angleRotTerra);
 					meshTerra.quaternion.copy(quaternionZ);
 				}
 
@@ -1111,8 +1198,8 @@
 						vectorSatTerra.applyQuaternion(quaternionTerra);
 						vEsferic=coordEsferiques(vectorSatTerra);              										
 
-						var voltes=Math.floor((vEsferic.z - omega * temps + Math.PI) / (2 * Math.PI));
-						var longitudMapa=vEsferic.z -omega * temps - voltes * 2 * Math.PI;                  
+						var voltes=Math.floor((vEsferic.z - omega * temps + angleRotTerra + Math.PI) / (2 * Math.PI));
+						var longitudMapa=vEsferic.z -omega * temps + angleRotTerra - voltes * 2 * Math.PI;                  
 
 						longitudAnterior=longitudMapa;	
 						if (puntSat[i]!=undefined) {
@@ -1149,7 +1236,7 @@
 				loader3.load( 'imatges/'+parametres.mapa3D, function (texture) {
                     // TERRA
 					grupMon.remove( meshTerra );
-					var geometryTerra = new THREE.SphereGeometry( 1, 20, 20 );
+					var geometryTerra = new THREE.SphereGeometry( 1, 40, 40 );
 					geometryTerra.rotateX(Math.PI/2);
 					var materialTerra = new THREE.MeshLambertMaterial({ map: texture, overdraw: true });
 					meshTerra = new THREE.Mesh( geometryTerra, materialTerra );
@@ -1403,7 +1490,7 @@
 
 				function processData(allText) {
 					var csv=allText;   
-    				var msgDiv="<table style='width:100%'>";
+    				var msgDiv="<table style='width:100%;font-size:large;'>";
 		        	msgDiv +="<tr id='potSensors'><td style='width:50%; background-color: #cacaca'>Potència necessària (W): 0</td>";//<td style='width:50%; background-color: #cacaca'>Panells solars : 1</td></tr>";
     				msgDiv +="<tr id='disSensors'><td style='width:50%; background-color: #cacaca'>Ocupació d'espai de disc (kb/s): 0</td>";//<td style='width:50%; background-color: #cacaca'>Unitats de disc : 1</td></tr>";    				    				
     				msgDiv +="</table><br>"; 
