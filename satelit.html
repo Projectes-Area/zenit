@@ -1252,7 +1252,7 @@
         }					
         
         if(numCat == 0) {  // Tipus "NewSpace Catalunya"
-          fetch('downloadSingle.php?id=47961')  // Enxaneta
+          fetch('downloadSingle.php?id=55010')  // Menut
           .then(response => response.text())
           .then(response => 	{	
             var resposta = response.split('\r\n');
@@ -1260,20 +1260,20 @@
             cadenaSatelits[1] = resposta[1];
             cadenaSatelits[2] = resposta[2];
             cadenaSatelits[3] = resposta[3];
-            fetch('downloadTemp.php?id=70309')  // Menut
+            fetch('downloadSingle.php?id=47961')  // Enxaneta
             .then(response => response.text())
             .then(response => 	{	
               var resposta = response.split('\r\n');
-              cadenaSatelits[4] = resposta[0];
-              cadenaSatelits[5] = resposta[1];
-              cadenaSatelits[6] = resposta[2];
-              nomSatelit = ['Enxaneta','Menut'];
+              cadenaSatelits[4] = resposta[1];
+              cadenaSatelits[5] = resposta[2];
+              cadenaSatelits[6] = resposta[3];
+              nomSatelit = ['Menut','Enxaneta'];
               $("select:gt(0)").empty();
               for (i=0;i<nomSatelit.length;i++) {
                 $("select:gt(0)").append('<option value="'+nomSatelit[i]+'">'+nomSatelit[i]+'</option>').css('width', '100%');											;
               }
               carregant.style.animationPlayState = "paused";
-                    carregant.style.display = "none";										
+              carregant.style.display = "none";										
             })
             .then(response => {
                 canviaSatelit();
@@ -1286,7 +1286,8 @@
         } else {  // Altres tipus
           fetch('downloadLines.php?tipus='+ urls[numCat])
           .then(response => response.text())
-          .then(response => 	{	nomSatelit = [];
+          .then(response => 	{	
+            nomSatelit = [];
             var resposta = response.split('\r\n');
             for (i=0;i<resposta.length/3-1;i++) {
               nomSatelit.push(resposta[3*i+1]);
@@ -1363,7 +1364,7 @@
         if (angleRotTerra>0) {
           angleRotTerra=angleRotTerra - 2 * Math.PI;
         }
-        console.log('angleTerra: ' + (-angleRotTerra * 180 / Math.PI));
+        //console.log('angleTerra: ' + (-angleRotTerra * 180 / Math.PI));
         folder1.__controllers[8].setValue(-angleRotTerra * 180 / Math.PI);
         folder1.__controllers[6].setValue(angleEscombrat * 180 / Math.PI);
         canviaParametres();
@@ -1389,3 +1390,4 @@
     <div id="carregant"></div>
   </body>
 </html>
+
