@@ -764,23 +764,103 @@ function addGraph() {
         $("#transferència").css("color","white");		
         $("#compleció").css("color","white");	
         botoMissio.name("Assignació de missió");
-        reset();
-        fet();
+        // No cridem reset() ni canviaParametres() fins que l'usuari hagi completat la finestra emergent
+        setTimeout(fet, 100); // crida lleugerament retardada per evitar conflictes de renderitzat
     }
 }
 
 function fet() {
-    var data_hora = new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString();
-    var informe = "Missió completada: " + row_mis[nM][1] + "\n\n";
-    informe+= "Data i hora de la compleció: " + data_hora + "\n"; 
-    informe+= "Temps invertit: " + Math.floor(temps / 86400 *10) / 10 + " dies\n";
-    informe+= "Cobertura de la zona: " + cobertura + "%\n";
-    informe+= "Exploració de la zona: " + hores_exploració + " hores\n";
-    informe+= "Dades transferides a l'estació: " + transferència + " GB";
-    row_mis.splice(nM,1);
-    fes_pdf(informe);
-    alert("Enhorabona, has completat la missió!\nA continuaciṕ es baixarà l'informe corresponent...");   
-    canviaParametres();
+    // Crear finestra emergent personalitzada
+    // Evitem que hi hagi més d'una finestra emergent
+    if (document.getElementById('popup_nom_estudiant')) return;
+    // Atura l'animació i bloqueja la interacció de fons
+    if (typeof app !== 'undefined' && app.ticker) app.ticker.stop();
+    // Bloqueja la interacció de fons però permet dins la finestra
+    document.body.style.pointerEvents = 'none';
+    var popup = document.createElement('div');
+    popup.id = 'popup_nom_estudiant';
+    popup.style.pointerEvents = 'auto';
+    popup.style.position = 'fixed';
+    popup.style.top = '0';
+    popup.style.left = '0';
+    popup.style.width = '100vw';
+    popup.style.height = '100vh';
+    popup.style.background = 'rgba(0,0,0,0.5)';
+    popup.style.display = 'flex';
+    popup.style.alignItems = 'center';
+    popup.style.justifyContent = 'center';
+    popup.style.zIndex = '9999';
+
+    var box = document.createElement('div');
+    box.style.background = 'white';
+    box.style.padding = '32px';
+    box.style.borderRadius = '12px';
+    box.style.boxShadow = '0 2px 16px rgba(0,0,0,0.3)';
+    box.style.textAlign = 'center';
+    box.style.minWidth = '320px';
+
+    var missatge = document.createElement('div');
+    missatge.innerHTML = "<b>Enhorabona, has completat la missió!</b><br>Escriu el teu nom i cognoms per baixar l'informe corresponent.";
+    missatge.style.marginBottom = '16px';
+    box.appendChild(missatge);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Nom i cognoms';
+    input.style.width = '90%';
+    input.style.padding = '8px';
+    input.style.marginBottom = '12px';
+    input.style.fontSize = '16px';
+    box.appendChild(input);
+
+    var error = document.createElement('div');
+    error.style.color = 'red';
+    error.style.fontSize = '14px';
+    error.style.height = '18px';
+    error.style.marginBottom = '8px';
+    box.appendChild(error);
+
+    var boto = document.createElement('button');
+    boto.textContent = 'Descarrega informe';
+    boto.style.padding = '10px 24px';
+    boto.style.fontSize = '16px';
+    boto.style.background = '#007bff';
+    boto.style.color = 'white';
+    boto.style.border = 'none';
+    boto.style.borderRadius = '6px';
+    boto.style.cursor = 'pointer';
+    boto.onclick = function() {
+        if (input.value.trim() === '') {
+            error.textContent = 'Cal escriure el nom i els cognoms.';
+            input.focus();
+            return;
+        }
+        nom_estudiant = input.value.trim();
+        // Elimina la finestra emergent abans de reactivar la interacció
+        setTimeout(function() {
+            if (popup && popup.parentNode) popup.parentNode.removeChild(popup);
+            document.body.style.pointerEvents = '';
+            if (typeof app !== 'undefined' && app.ticker) app.ticker.start();
+        }, 100);
+        // Generar informe amb el nom de l'estudiant
+        var data_hora = new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString();
+        var informe = "Missió completada: " + row_mis[nM][1] + "\n\n";
+        informe+= "Nom i cognoms: " + nom_estudiant + "\n";
+        informe+= "Data i hora de la compleció: " + data_hora + "\n"; 
+        informe+= "Temps invertit: " + Math.floor(temps / 86400 *10) / 10 + " dies\n";
+        informe+= "Cobertura de la zona: " + cobertura + "%\n";
+        informe+= "Exploració de la zona: " + hores_exploració + " hores\n";
+        informe+= "Dades transferides a l'estació: " + transferència + " GB";
+        row_mis.splice(nM,1);
+        fes_pdf(informe);
+        reset();
+        canviaParametres();
+    };
+    box.appendChild(boto);
+
+    popup.appendChild(box);
+    document.body.appendChild(popup);
+    input.focus();
 }
 
 function addPoint(){

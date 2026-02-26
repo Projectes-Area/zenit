@@ -255,7 +255,28 @@
         
         textPeriode=folder1.add( parametres, "display").name("PERÍODE");
         textPeriode.domElement.childNodes[0].setAttribute("disabled", "true");	
-        folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
+        var ctrlERA = folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
+        // Hide the ERA controller row in the dat.GUI panel but keep the parameter active
+        try {
+          // The controller's DOM element sits inside two wrapper divs; the <li> container
+          // is the grandparent. Hide the <li> so the row takes no vertical space.
+          var li = null;
+          if (ctrlERA && ctrlERA.domElement) {
+            var parent = ctrlERA.domElement.parentNode;
+            if (parent) li = parent.parentNode; // expected to be the <li class="cr ...">
+          }
+          if (li && li.style) {
+            li.style.display = 'none';
+            li.style.height = '0';
+            li.style.padding = '0';
+            li.style.margin = '0';
+          } else if (ctrlERA && ctrlERA.domElement && ctrlERA.domElement.parentNode) {
+            // fallback: hide the immediate parent if structure differs
+            ctrlERA.domElement.parentNode.style.display = 'none';
+          }
+        } catch (e) {
+          console.log('Could not hide ERA controller DOM element:', e);
+        }
         folder1.open();
 
         var folder3 = guiDret.addFolder( 'SIMULACIÓ' );				
@@ -286,7 +307,7 @@
           afegirEstacio: botoAfegirEstacio,
           eliminarEstacio: botoEliminarEstacio,
           mapa: 'graella.jpg', // fitxer de textura del mapa
-          tipus: 'NewSpace Catalunya',
+          tipus: 'Catalans',
           veureLine: true, // veure o no la trajectòria
           veureEixos: true, // veure o no els eixos i plans
           velAnimacio: 3, // velocitat de l'animació
@@ -1219,8 +1240,8 @@
       }
 
       function addCategories() {
-        categories=["NewSpace Catalunya", "Estacions espacials","Els més brillants","Meteorològics","Cerca i rescat","CubeSats","Seguiment de desastres","Geosíncrons","Localització (GPS)","Localització (Galileo)","Científics", "Educatius","Militars"];
-        urls=["active","stations","visual","weather","sarsat","cubesat","dmc","geo","gps-ops","galileo","science", "education","military"];
+        categories=["Catalans", "Estacions espacials","Els més brillants","Meteorològics","Cerca i rescat","CubeSats","Seguiment de desastres","Geosíncrons","Localització (GPS)","Localització (Galileo)","Científics","Educació","Militars"];
+        urls=["active","stations","visual","weather","sarsat","cubesat","dmc","geo","gps-ops","galileo","science","education","military"];
         folder0.add(parametres, "tipus", categories).name('Tipus').onChange(canviaCategoria);
         folder0.add(parametres, "nomSats", nomSatelit).name('Nom').onChange( canviaSatelit );
         folder0.open();
@@ -1251,8 +1272,8 @@
           console.log("Error: iniciant");
         }					
         
-        if(numCat == 0) {  // Tipus "NewSpace Catalunya"
-          fetch('downloadSingle.php?id=55010')  // Menut
+        if(numCat == 0) {  // Tipus "Catalans"
+          fetch('downloadSingle.php?id=66683')  // 6GStarLab
           .then(response => response.text())
           .then(response => 	{	
             var resposta = response.split('\r\n');
@@ -1260,14 +1281,14 @@
             cadenaSatelits[1] = resposta[1];
             cadenaSatelits[2] = resposta[2];
             cadenaSatelits[3] = resposta[3];
-            fetch('downloadSingle.php?id=47961')  // Enxaneta
+            fetch('downloadSingle.php?id=55010')  // Menut
             .then(response => response.text())
             .then(response => 	{	
               var resposta = response.split('\r\n');
               cadenaSatelits[4] = resposta[1];
               cadenaSatelits[5] = resposta[2];
               cadenaSatelits[6] = resposta[3];
-              nomSatelit = ['Menut']; // ,'Enxaneta'];
+              nomSatelit = ['6GSTARLAB','MENUT'];     
               $("select:gt(0)").empty();
               for (i=0;i<nomSatelit.length;i++) {
                 $("select:gt(0)").append('<option value="'+nomSatelit[i]+'">'+nomSatelit[i]+'</option>').css('width', '100%');											;

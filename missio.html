@@ -221,6 +221,7 @@
 			var sensorsIniciats=false;
 			var numSensors=0;
 			var angleRotTerra=0;
+			var estat=0; // 0-no_iniciada // 1-en_curs  // 2-completada // 3-caducada
 
 			// CONSTANTS TERRA            
             const MU=398694790080000; // G * massa de la Terra, S.I.
@@ -310,7 +311,25 @@
 				textPeriode=folder1.add( parametres, "display").name("PERÍODE");
 				textPeriode.domElement.childNodes[0].setAttribute("disabled", "true");
 				
-				folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
+				var ctrlERA = folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
+				// Hide the ERA controller row (<li>) so it doesn't occupy vertical space but keep the parameter active
+				try {
+					var liEra = null;
+					if (ctrlERA && ctrlERA.domElement) {
+						var parent = ctrlERA.domElement.parentNode;
+						if (parent) liEra = parent.parentNode; // expected <li>
+					}
+					if (liEra && liEra.style) {
+						liEra.style.display = 'none';
+						liEra.style.height = '0';
+						liEra.style.padding = '0';
+						liEra.style.margin = '0';
+					} else if (ctrlERA && ctrlERA.domElement && ctrlERA.domElement.parentNode) {
+						ctrlERA.domElement.parentNode.style.display = 'none';
+					}
+				} catch (e) {
+					console.log('Could not hide ERA controller DOM element:', e);
+				}
 				var folder2 = gui.addFolder( 'ESTACIONS DE SEGUIMENT' );
                 folder2.add( parametres, "radiProximitat", 100, 4000, 100 ).name("Radi de proximitat").onChange( canviaRadiProximitat );
 				folder2.add( parametres, "afegirEstacio").name("Afegir estació");
@@ -377,7 +396,7 @@
 					mapa2D: 'mapa_fisic_silueta.png', // fitxer de textura del mapa
 					mapa3D: '8k_earth_daymap.jpg', // fitxer de textura del mapa
 					veureEixos: true, // veure o no els eixos i plans
-					velAnimacio: 3, // velocitat de l'animació
+					velAnimacio: 1, // velocitat de l'animació
 					display : '', // visualitzador del període del satèl·lit.
 					pausa: botoPausa, // botó per pausar o reprendre la simulació
 					//infoSatelit: botoInfoSatelit, // finestra modal amb el satèl·lit 3D
@@ -796,17 +815,28 @@
 				this.data = null;
 			}
 
-			function botoPausa() {		
-				enPausa=!enPausa;
-				if (!enPausa) {
-					estil.backgroundColor = 'IndianRed';
-					botoIniciar.name("P A U S A");
-					previousTime=new Date().getTime();
-					animate();
-				} else {
-					estil.backgroundColor = 'green';
-					botoIniciar.name("C O N T I N U A");
-				}
+			function botoPausa() {	
+				switch(estat) {
+					case 0:
+						if (comprova_inici()) {
+							estat = 1;
+							enPausa = false;
+							estil.backgroundColor = 'red';
+							botoIniciar.name("A V O R T A");
+						}
+						break;
+					case 1:
+						estat = 0;
+						enPausa = true;
+						temps = 0;
+					    estil.backgroundColor = 'green';
+						botoIniciar.name("I N I C I A");
+				 		break;
+				}	
+			}
+
+			function comprova_inici() {
+				return true;
 			}
 
 			function addGraph() {
