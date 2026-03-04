@@ -254,7 +254,25 @@
         folder1.add( parametres, "anomalia", 0, 360, 0.01 ).name("Anomalia veritable").onChange(canviaParametres);
         
         textPeriode=folder1.add( parametres, "display").name("PERÍODE");
-        textPeriode.domElement.childNodes[0].setAttribute("disabled", "true");	
+        textPeriode.domElement.childNodes[0].setAttribute("disabled", "true");
+        // Amaga el control PERÍODE sense perdre funcionalitat ni ocupar espai
+        try {
+          var liPeriode = null;
+          if (textPeriode && textPeriode.domElement) {
+            var parent = textPeriode.domElement.parentNode;
+            if (parent) liPeriode = parent.parentNode; // <li>
+          }
+          if (liPeriode && liPeriode.style) {
+            liPeriode.style.display = 'none';
+            liPeriode.style.height = '0';
+            liPeriode.style.padding = '0';
+            liPeriode.style.margin = '0';
+          } else if (textPeriode && textPeriode.domElement && textPeriode.domElement.parentNode) {
+            textPeriode.domElement.parentNode.style.display = 'none';
+          }
+        } catch (e) {
+          console.log('No s\'ha pogut amagar el control PERÍODE:', e);
+        }
         var ctrlERA = folder1.add( parametres, "ERA", 0, 360, 0.01).name("Angle rotació Terra").onChange(canviaParametres);
         // Hide the ERA controller row in the dat.GUI panel but keep the parameter active
         try {
