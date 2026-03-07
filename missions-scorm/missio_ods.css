@@ -1,0 +1,119 @@
+body {
+    background-color: #000;
+    margin: 0 0 0 0;
+    padding: 0 0 0 0;
+    border: none; 
+    cursor: default;
+    overflow: hidden;
+}
+#container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    background:black;
+}
+#content {
+    width: 50%;
+}
+#content2 {
+    width: 50%;
+}
+#dat {
+    user-select: none; position: absolute; left: 0;	top: 0;	z-Index: 200;
+}
+.modal-dialog{
+    background-color: white;
+    width: 75% !important;
+}
+.modal-header{
+    background-color: rgb(224, 236, 247);
+}
+.modal-footer{
+    clear:both;
+}
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}	
+.divMapa {
+    float:left;
+    border:1px solid #FFFFFF;
+    width:400px;
+}	
+.dg .c {
+    width: 45% !important;
+}
+.dg .c div {
+    box-sizing: content-box;                                                             
+}
+.dg .c select {
+    color: black;
+    font-size:small;
+    width: 170% !important;
+    margin-left: -70px;
+}
+.dg .c input[type=text] {                                                    
+    line-height:normal;                                                                  
+} 
+.dg .c .slider {
+    width: 50%;
+}
+.dg li.title {
+    color:rgb(175,0,0);
+    font-size:small;
+}
+.dg .property-name {
+    font-size:small;
+    width: 55% !important;
+}
+.dg .cr.boolean .property-name {
+    font-size:small;
+}
+.dg .cr.function .property-name {
+    background-color: green;
+    text-align: center;
+    width: 100% !important;
+    font-size:medium;
+}
+.dg .cr.number input[type=text] {
+    width: 45%;
+}
+#status {
+    position: absolute;
+    top: 6px;
+    z-index: 100;
+}
+#tauler {
+    display: flex;
+    background:black;
+    border-color: white;
+    border-width: 5px;
+    border-style: solid;
+    padding: 5px;
+    color: white;
+    font-size: medium;
+}
+#no-energy {
+    display: none;
+}
+#no-discs {
+    display: none;
+}
+.warning {
+    flex: 1;
+    background-color: red;
+    color: white;
+    text-align: center;
+    font-size: medium;
+    animation: blinker 1.5s linear infinite
+}
+@keyframes blinker {
+    50% {
+        opacity: 0;
+    }
+}
+.imgSensor{
+    height:50px;
+}
+

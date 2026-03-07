@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="Missions" version="1.2"
+    xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+    xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
+    http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+  <organizations default="IOC">
+    <organization identifier="IOC">
+      <title>Missions</title>
+      <item identifier="ITEM1" identifierref="RES1">
+        <title>Missions</title>
+        <creator>
+            <string>Jaume Dellunde</string>
+        </creator>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="RES1" type="webcontent" adlcp:scormtype="sco" href="missio_scorm.html">
+        <!-- Fitxers de l'arrel del projecte -->
+        <file href="missio_scorm.html"/>
+        <file href="missio_scorm.js"/>
+        <file href="missio_ods.css"/>
+        <file href="missio_scorm-instruccions.html"/>
+        <file href="orbital.html"/>
+        <file href="missions.tsv"/>
+        <file href="sensors.tsv"/>
+        <file href="pixi.min.js"/>
+        <file href="pixi.min.js.map"/>
+        <!-- Fitxers de la carpeta three.js -->
+        <file href="three.js/build/three.min.js"/>
+        <file href="three.js/examples/js/renderers/Projector.js"/>
+        <file href="three.js/examples/js/renderers/CanvasRenderer.js"/>
+        <file href="three.js/examples/js/libs/dat.gui.min.js"/>
+        <file href="three.js/examples/js/controls/OrbitControls.js"/>
+        <file href="three.js/examples/js/loaders/OBJLoader.js"/>
+        <file href="three.js/examples/js/Detector.js"/>
+        <!-- Fitxers de la carpeta imatges -->
+        <file href="imatges/8k_earth_daymap.jpg"/>
+        <file href="imatges/eixos2DNou.png"/>
+        <file href="imatges/estacio_punt.png"/>
+        <file href="imatges/llegenda2D.png"/>
+        <file href="imatges/mapa_fisic.png"/>
+        <file href="imatges/mapa_fisic_silueta.png"/>
+        <file href="imatges/sat.obj"/>
+        <file href="imatges/sat_punt.png"/>
+        <file href="imatges/zona_punt.png"/>
+        <file href="imatges/missio_ods.png"/>
+        <!-- Fitxers de la carpeta imatges/missions -->
+        <file href="imatges/missions/deepwater.jpg"/>
+        <file href="imatges/missions/fukushima.jpg"/>
+        <file href="imatges/missions/gwalior.jpg"/>
+        <file href="imatges/missions/indonesia.jpg"/>
+        <file href="imatges/missions/jurena.jpg"/>
+        <file href="imatges/missions/makassar.jpg"/>
+        <file href="imatges/missions/pol_nord.jpg"/>
+        <file href="imatges/missions/puerto_rico.jpg"/>
+        <!-- Fitxers de la carpeta imatges/sensors -->
+        <file href="imatges/sensors/ADS.jpg"/>
+        <file href="imatges/sensors/AIS.jpg"/>
+        <file href="imatges/sensors/GNSS-R.jpg"/>
+        <file href="imatges/sensors/GNSS-RO.jpg"/>
+        <file href="imatges/sensors/HYP.jpg"/>
+        <file href="imatges/sensors/LIDAR.jpg"/>
+        <file href="imatges/sensors/RAD.jpg"/>
+        <file href="imatges/sensors/SAR.jpg"/>
+    </resource>
+  </resources>
+</manifest>

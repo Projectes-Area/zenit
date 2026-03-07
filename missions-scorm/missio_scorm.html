@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ca">
+	<head>
+		<title>Missió</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link rel="stylesheet" href="missio_ods.css"> 
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+		<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA==" crossorigin=""></script>        
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/pdfmake.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/vfs_fonts.js"></script>		
+		<script src="https://code.jquery.com/jquery-1.12.4.js"></script>    
+		<!-- Bootstrap -->
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> 
+		<!-- Optional theme -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous"> 
+		<!-- Latest compiled and minified JavaScript -->
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script> 
+
+		<script src="three.js/build/three.min.js"></script>
+		<script src="three.js/examples/js/renderers/Projector.js"></script>
+		<script src="three.js/examples/js/renderers/CanvasRenderer.js"></script>
+		<script src="three.js/examples/js/libs/dat.gui.min.js"></script>
+		<script src="three.js/examples/js/controls/OrbitControls.js"></script>
+		<script src="three.js/examples/js/loaders/OBJLoader.js"></script>
+		<script src="three.js/examples/js/Detector.js"></script>
+		<script src="pixi.min.js"></script>				
+	</head>
+	<body>				
+		<div id="container">
+			<div id="dat"></div>
+			<div id="content">
+			</div>
+			<div id="content2">
+			</div>
+		</div>
+		<div id="finestraInfo" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" width='90%' style="visibility: hidden">
+			<div class="modal-dialog">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+					<h3 id="modalHeader"></h3>
+				</div>
+				<div class="modal-body" id="missatge">					         	
+				</div>
+				<div class="modal-footer">
+					<button class="btn" data-dismiss="modal" aria-hidden="true">Tanca</button>
+				</div>
+			</div>
+		</div> 
+		<div id="finestraExploracio" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" width='90%' style="visibility: hidden">
+			<div class="modal-dialog">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+					<h3 id="headerExploracio"></h3>
+				</div>
+				<div class="modal-body" id="missatgeExploracio">						
+					<div id="mapa1" class="divMapa"></div>	
+					<div id="mapa2" class="divMapa"></div>
+					<div id="mapa3" class="divMapa"></div>	
+					<div id="mapa4" class="divMapa"></div>	
+					<div id="mapa5" class="divMapa"></div>					
+				</div>
+				<div class="modal-footer">
+					<button class="btn" data-dismiss="modal" aria-hidden="true">Tanca</button>
+				</div>
+			</div>
+		</div> 
+		<div id="status">
+			<div id="tauler">
+				<div style="width:180px">
+					ODS: <span id="ods">-</span><br>
+					Estat: <span id="estat_missio">No assignada</span><br>	
+					Dies restants: <span id="dies_restants">-</span><br>
+					Compleció: <span id="compleció">0</span> / 100%	
+				</div>
+				<div style="width:230px">
+					Hores d'exploració: <span id="hores_exploració">0</span> / <span id="explora_mis">0</span><br>
+					Cobertura: <span id="cobertura">0</span> / <span id="cobertura_mis">0</span>%<br>
+					Transferència: <span id="transferència">0</span> / <span id="transfer_mis">0</span> GB<br>
+				</div>
+			</div>
+			<div style="width:100%;display:flex">
+				<div id="no-energy" class="warning">
+					Sensors: Sense energia!
+				</div>
+				<div id="no-discs" class="warning">
+					Discs: Sense capacitat!
+				</div>
+			</div>
+		</div>
+		<script src="missio_scorm.js"></script>
+		<script>
+		// Hide dat.GUI controller row by label text (non-destructive).
+		function hideDatGuiRowByLabel(labelText) {
+		  try {
+		    var elems = document.querySelectorAll('.dg .property-name');
+		    elems.forEach(function(el){
+		      if (el.textContent && el.textContent.trim() === labelText) {
+		        var li = el.closest('li');
+		        if (li) {
+		          li.style.display = 'none';
+		          li.style.height = '0';
+		          li.style.padding = '0';
+		          li.style.margin = '0';
+		        }
+		      }
+		    });
+		  } catch (e) {
+		    console.log('hideDatGuiRowByLabel error:', e);
+		  }
+		}
+		// Wait a bit after load so the GUI has time to be constructed by external script.
+		document.addEventListener('DOMContentLoaded', function(){
+		  setTimeout(function(){ hideDatGuiRowByLabel('Angle rotació Terra'); }, 400);
+		});
+		</script>
+	</body>
+</html>
