@@ -504,11 +504,6 @@ function init() {
     initGUI();				
 }
 
-// Inicialitza SCORM amb pipwerks quan es carrega la pàgina
-if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
-    pipwerks.SCORM.version = '1.2';
-    pipwerks.SCORM.init();
-}
 
 function mostraTros(i,j) {
 
@@ -729,6 +724,7 @@ function comprova_inici() {
         }
     }
 }
+
 
 var dies_restants;		
 var hores_exploració;
@@ -978,10 +974,30 @@ function fet() {
         confirmPopup.appendChild(confirmBox);
         document.body.appendChild(confirmPopup);
         setTimeout(function() {
-            if (confirmPopup && confirmPopup.parentNode) confirmPopup.parentNode.removeChild(confirmPopup);
-            reset();
-            canviaParametres();
-        }, 2500);
+            // Intenta tancar la finestra SCORM de diverses maneres
+            var closed = false;
+            try {
+                window.open('', '_self', '');
+                window.close();
+                closed = window.closed;
+            } catch (e) {}
+            if (!closed && window.top && window.top !== window && window.top.close) {
+                try {
+                    window.top.open('', '_self', '');
+                    window.top.close();
+                    closed = window.top.closed;
+                } catch (e) {}
+            }
+            if (!closed && window.parent && window.parent !== window && window.parent.close) {
+                try {
+                    window.parent.open('', '_self', '');
+                    window.parent.close();
+                    closed = window.parent.closed;
+                } catch (e) {}
+            }
+            //reset();
+            //canviaParametres();
+        }, 2000);
     };
     box.appendChild(boto);
 
@@ -1883,33 +1899,15 @@ function reset() {
     //canviaParametres();
 }
 
-// Funció per obtenir l'API SCORM
-function getAPI() {
-    var win = window;
-    while (win != null) {
-        if (win.API != null) return win.API;
-        if (win.parent != null && win.parent != win) win = win.parent;
-        else break;
+function enviarDades(nota, missio) {
+    // Assegura que la connexió SCORM està activa
+    if (typeof pipwerks !== 'undefined' && pipwerks.SCORM && pipwerks.SCORM.connection.isActive) {
+        pipwerks.SCORM.set("cmi.core.score.raw", nota);
+        pipwerks.SCORM.set("cmi.core.lesson_status", "completed");
+        pipwerks.SCORM.set("cmi.comments", missio);
+        pipwerks.SCORM.save();
+    } else {
+        showElegantAlert("No s'ha pogut connectar amb el LMS SCORM. La nota no s'ha enviat.");
     }
-    return null;
 }
 
-// Funció per enviar la nota i el text addicional
-function enviarDades(nota, textAddicional) {
-    // Obtenir l'API SCORM
-    var api = getAPI();
-    
-    if (api) {
-        // Inicialitzar la comunicació
-        api.LMSInitialize("");
-        
-        // Guardar la nota (estàndard)
-        api.LMSSetValue("cmi.core.score.raw", nota);        
-        api.LMSSetValue("cmi.comments", textAddicional);  
-        //api.LMSSetValue("cmi.core.total_time", time);  
-              
-        // Finalitzar
-        api.LMSCommit("");
-        api.LMSFinish("");
-    }
-}

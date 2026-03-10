@@ -91,6 +91,19 @@
 		</div>
 		<script src="missio_scorm.js"></script>
 		<script>
+		// Inicialització SCORM a l'inici de la pàgina
+		document.addEventListener('DOMContentLoaded', function() {
+			if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
+				pipwerks.SCORM.init();
+			}
+		});
+		window.addEventListener('unload', function() {
+			if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
+				pipwerks.SCORM.quit();
+			}
+		});
+		</script>
+		<script>
 		// Hide dat.GUI controller row by label text (non-destructive).
 		function hideDatGuiRowByLabel(labelText) {
 		  try {
@@ -115,5 +128,9 @@
 		  setTimeout(function(){ hideDatGuiRowByLabel('Angle rotació Terra'); }, 400);
 		});
 		</script>
+		<!-- SCORM API Wrapper -->
+		<script src="scorm_api_wrapper.js"></script>
+		<!-- Protector -->
+		<script src="protegir.js"></script>
 	</body>
 </html>

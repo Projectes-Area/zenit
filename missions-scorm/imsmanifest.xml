@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="Missions" version="1.2"
+<manifest identifier="MCUA-SCORM" version="1.2"
     xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
     xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -65,6 +65,10 @@
         <file href="imatges/sensors/LIDAR.jpg"/>
         <file href="imatges/sensors/RAD.jpg"/>
         <file href="imatges/sensors/SAR.jpg"/>
+        <!-- Script de l'API SCORM -->
+        <file href="scorm_api_wrapper.js"/>
+        <!-- Protector -->
+        <file href="protegir.js"/>
     </resource>
   </resources>
 </manifest>
