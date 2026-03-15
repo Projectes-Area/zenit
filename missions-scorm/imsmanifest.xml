@@ -26,16 +26,6 @@
         <file href="orbital.html"/>
         <file href="missions.tsv"/>
         <file href="sensors.tsv"/>
-        <file href="pixi.min.js"/>
-        <file href="pixi.min.js.map"/>
-        <!-- Fitxers de la carpeta three.js -->
-        <file href="three.js/build/three.min.js"/>
-        <file href="three.js/examples/js/renderers/Projector.js"/>
-        <file href="three.js/examples/js/renderers/CanvasRenderer.js"/>
-        <file href="three.js/examples/js/libs/dat.gui.min.js"/>
-        <file href="three.js/examples/js/controls/OrbitControls.js"/>
-        <file href="three.js/examples/js/loaders/OBJLoader.js"/>
-        <file href="three.js/examples/js/Detector.js"/>
         <!-- Fitxers de la carpeta imatges -->
         <file href="imatges/8k_earth_daymap.jpg"/>
         <file href="imatges/eixos2DNou.png"/>
@@ -65,7 +55,7 @@
         <file href="imatges/sensors/LIDAR.jpg"/>
         <file href="imatges/sensors/RAD.jpg"/>
         <file href="imatges/sensors/SAR.jpg"/>
-        <!-- Script de l'API SCORM -->
+        <!-- SCORM API Wrapper -->
         <file href="scorm_api_wrapper.js"/>
         <!-- Protector -->
         <file href="protegir.js"/>
