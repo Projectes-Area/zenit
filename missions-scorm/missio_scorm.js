@@ -1,3 +1,8 @@
+const num_escenaris = 3;
+let escenari_actual = 0;
+let nota_final = 0; // variable per emmagatzemar la nota final de l'estudiant
+let notes_parcials = []; // array per emmagatzemar les notes parcials de cada escenari
+
 // Mostra una finestra emergent elegant tipus alert
 function showElegantAlert(msg) {
     var alertPopup = document.createElement('div');
@@ -40,7 +45,7 @@ function showElegantAlert(msg) {
 }
 
 // Mostra una finestra emergent elegant tipus confirm
-function showElegantConfirm(msg, callback) {
+function showElegantConfirm(msg, callback, okText) {
     var confirmPopup = document.createElement('div');
     confirmPopup.style.position = 'fixed';
     confirmPopup.style.top = '0';
@@ -63,8 +68,8 @@ function showElegantConfirm(msg, callback) {
     var btnsDiv = document.createElement('div');
     btnsDiv.style.marginTop = '18px';
     var okBtn = document.createElement('button');
-    okBtn.textContent = 'Sí';
-    okBtn.style.margin = '0 12px';
+    okBtn.textContent = okText || 'Sí';
+    okBtn.style.margin = '0 auto';
     okBtn.style.padding = '8px 24px';
     okBtn.style.fontSize = '16px';
     okBtn.style.background = '#007bff';
@@ -72,26 +77,11 @@ function showElegantConfirm(msg, callback) {
     okBtn.style.border = 'none';
     okBtn.style.borderRadius = '6px';
     okBtn.style.cursor = 'pointer';
-    var cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'No';
-    cancelBtn.style.margin = '0 12px';
-    cancelBtn.style.padding = '8px 24px';
-    cancelBtn.style.fontSize = '16px';
-    cancelBtn.style.background = '#aaa';
-    cancelBtn.style.color = 'white';
-    cancelBtn.style.border = 'none';
-    cancelBtn.style.borderRadius = '6px';
-    cancelBtn.style.cursor = 'pointer';
     okBtn.onclick = function() {
         if (confirmPopup && confirmPopup.parentNode) confirmPopup.parentNode.removeChild(confirmPopup);
         callback(true);
     };
-    cancelBtn.onclick = function() {
-        if (confirmPopup && confirmPopup.parentNode) confirmPopup.parentNode.removeChild(confirmPopup);
-        callback(false);
-    };
     btnsDiv.appendChild(okBtn);
-    btnsDiv.appendChild(cancelBtn);
     confirmBox.appendChild(document.createElement('br'));
     confirmBox.appendChild(btnsDiv);
     confirmPopup.appendChild(confirmBox);
@@ -108,7 +98,7 @@ var geometrySat, geometryLink3D, materialLink3D, materialOrbita, geometryEstacio
 var textPeriode;
 var grupMon;
 var arrowHelper, axesHelper, plaEquatorial, plaOrbita;
-var folder1,folder3,folder4;
+var folder1,folder3,folder4,folder5;
 var quaternionTerra;
 var estacio3D=[];
 var link2D=[];
@@ -238,7 +228,7 @@ function initGUI() {
     folder3.add( parametres, "veureEixos").name("Mostra eixos i plans").onChange( veureEixos );
     
     var guiDret = new dat.GUI({width:250});
-    var folder5 = guiDret.addFolder( 'MISSIÓ' );
+    folder5 = guiDret.addFolder( 'MISSIÓ' );
     //folder5.add( parametres, "infoSatelit").name("Satèl·lit");
     folder5.add( parametres, "infoInstruccions").name("Instruccions");		
     //folder5.add( parametres, "infoMissions").name("Missions");						
@@ -865,6 +855,7 @@ function addGraph() {
     $("#compleció").html(completat);
     if (completat >= 100) {
         estat = 0;
+        botoMissio.name("Assignació de missió");
         $("#ods").html("-");
         $("#estat_missio").html("No assignada");
         $("#dies_restants").html("-");
@@ -873,8 +864,8 @@ function addGraph() {
         $("#hores_exploració").css("color","white");
         $("#transferència").css("color","white");
         $("#compleció").css("color","white");
-        botoMissio.name("Assignació de missió");
-        // No cridem reset() ni canviaParametres() fins que l'usuari hagi completat la finestra emergent
+        reset();
+        canviaParametres();
         setTimeout(fet, 100); // crida lleugerament retardada per evitar conflictes de renderitzat
         return; // Evita mostrar el missatge de temps exhaurit si ja s'ha completat
     }
@@ -885,144 +876,46 @@ function addGraph() {
 }
 
 function fet() {
-    // Crear finestra emergent personalitzada
-    // Evitem que hi hagi més d'una finestra emergent
-    if (document.getElementById('popup_nom_estudiant')) return;
-    // Atura l'animació i bloqueja la interacció de fons
-    if (typeof app !== 'undefined' && app.ticker) app.ticker.stop();
-    // Bloqueja la interacció de fons però permet dins la finestra
-    document.body.style.pointerEvents = 'none';
-    var popup = document.createElement('div');
-    popup.id = 'popup_nom_estudiant';
-    popup.style.pointerEvents = 'auto';
-    popup.style.position = 'fixed';
-    popup.style.top = '0';
-    popup.style.left = '0';
-    popup.style.width = '100vw';
-    popup.style.height = '100vh';
-    popup.style.background = 'rgba(0,0,0,0.5)';
-    popup.style.display = 'flex';
-    popup.style.alignItems = 'center';
-    popup.style.justifyContent = 'center';
-    popup.style.zIndex = '9999';
-
-    var box = document.createElement('div');
-    box.style.background = 'white';
-    box.style.padding = '32px';
-    box.style.borderRadius = '12px';
-    box.style.boxShadow = '0 2px 16px rgba(0,0,0,0.3)';
-    box.style.textAlign = 'center';
-    box.style.minWidth = '320px';
-
-    var missatge = document.createElement('div');
-    missatge.innerHTML = '<b>Enhorabona, heu completat la missió!</b><br>Premeu el botó "Tramet" per registrar el vostre intent en el qualificador.';
-    missatge.style.marginBottom = '16px';
-    missatge.style.fontSize = '16px';
-    box.appendChild(missatge);
-/*
-    var input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Nom i cognoms';
-    input.style.width = '90%';
-    input.style.padding = '8px';
-    input.style.marginBottom = '12px';
-    input.style.fontSize = '16px';
-    box.appendChild(input);
-
-    var error = document.createElement('div');
-    error.style.color = 'red';
-    error.style.fontSize = '14px';
-    error.style.height = '18px';
-    error.style.marginBottom = '8px';
-    box.appendChild(error);*/
-
-    var boto = document.createElement('button');
-    boto.textContent = 'Tramet';
-    boto.style.padding = '10px 24px';
-    boto.style.fontSize = '16px';
-    boto.style.background = '#007bff';
-    boto.style.color = 'white';
-    boto.style.border = 'none';
-    boto.style.borderRadius = '6px';
-    boto.style.cursor = 'pointer';
-    boto.onclick = function() {
-        boto.disabled = true;
-        boto.style.opacity = '0.6';
-        boto.style.cursor = 'not-allowed';
-        boto.onclick = null;
-        enviarDades(10, row_mis[nM][1]);
-        // Mostra finestra emergent de confirmació
-        var confirmPopup = document.createElement('div');
-        confirmPopup.style.position = 'fixed';
-        confirmPopup.style.top = '0';
-        confirmPopup.style.left = '0';
-        confirmPopup.style.width = '100vw';
-        confirmPopup.style.height = '100vh';
-        confirmPopup.style.background = 'rgba(0,0,0,0.3)';
-        confirmPopup.style.display = 'flex';
-        confirmPopup.style.alignItems = 'center';
-        confirmPopup.style.justifyContent = 'center';
-        confirmPopup.style.zIndex = '10000';
-        var confirmBox = document.createElement('div');
-        confirmBox.style.background = 'white';
-        confirmBox.style.padding = '32px';
-        confirmBox.style.borderRadius = '12px';
-        confirmBox.style.boxShadow = '0 2px 16px rgba(0,0,0,0.3)';
-        confirmBox.style.textAlign = 'center';
-        confirmBox.style.fontSize = '18px';
-        confirmBox.textContent = "L'intent s'ha registrat correctament.";
-        confirmPopup.appendChild(confirmBox);
-        document.body.appendChild(confirmPopup);
-        setTimeout(function() {
-            // Intenta tancar la finestra SCORM de diverses maneres
-            var closed = false;
-            try {
-                window.open('', '_self', '');
-                window.close();
-                closed = window.closed;
-            } catch (e) {}
-            if (!closed && window.top && window.top !== window && window.top.close) {
-                try {
-                    window.top.open('', '_self', '');
-                    window.top.close();
-                    closed = window.top.closed;
-                } catch (e) {}
+    showElegantConfirm(`Enhorabona, heu completat la missió "${row_mis[nM][1]}"! (${escenari_actual + 1}/${num_escenaris})`, function(confirmed) {
+        notes_parcials.push(10);
+        if (window.pipwerks && pipwerks.SCORM && pipwerks.SCORM.connection.isActive) {
+            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".id", row_mis[nM][1]);
+            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".type", "numeric");
+            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".student_response", "10");
+        }
+        if (confirmed) {     
+            if (escenari_actual + 1 >= num_escenaris) {
+                pipwerks.SCORM.set('cmi.core.score.raw', 10);
+                pipwerks.SCORM.set('cmi.core.lesson_status', 'completed');
+                pipwerks.SCORM.save();
+                showElegantConfirm("Enhorabona, heu completat totes les missions!", function() {
+                    var closed = false;
+                    try {
+                        window.open('', '_self', '');
+                        window.close();
+                        closed = window.closed;
+                    } catch (e) {}
+                    if (!closed && window.top && window.top !== window && window.top.close) {
+                        try {
+                            window.top.open('', '_self', '');
+                            window.top.close();
+                            closed = window.top.closed;
+                        } catch (e) {}
+                    }
+                    if (!closed && window.parent && window.parent !== window && window.parent.close) {
+                        try {
+                            window.parent.open('', '_self', '');
+                            window.parent.close();
+                            closed = window.parent.closed;
+                        } catch (e) {}
+                    }
+                }, 'Tanca');
+            } else {
+                pipwerks.SCORM.save();
+                escenari_actual++;
             }
-            if (!closed && window.parent && window.parent !== window && window.parent.close) {
-                try {
-                    window.parent.open('', '_self', '');
-                    window.parent.close();
-                    closed = window.parent.closed;
-                } catch (e) {}
-            }
-            //reset();
-            //canviaParametres();
-        }, 2000);
-    };
-    box.appendChild(boto);
-
-    // Afegim la creueta per tancar manualment la finestra
-    var closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '&times;';
-    closeBtn.style.position = 'absolute';
-    closeBtn.style.top = '12px';
-    closeBtn.style.right = '18px';
-    closeBtn.style.background = 'transparent';
-    closeBtn.style.border = 'none';
-    closeBtn.style.fontSize = '28px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.color = '#888';
-    closeBtn.setAttribute('aria-label', 'Tanca');
-    closeBtn.onclick = function() {
-        if (popup && popup.parentNode) popup.parentNode.removeChild(popup);
-        document.body.style.pointerEvents = '';
-        if (typeof app !== 'undefined' && app.ticker) app.ticker.start();
-    };
-    box.style.position = 'relative';
-    box.appendChild(closeBtn);
-
-    popup.appendChild(box);
-    document.body.appendChild(popup);
+        }
+    }, 'Continua');
 }
 
 function addPoint(){
@@ -1892,6 +1785,8 @@ function reset() {
     $(".cr.number.has-slider").css("pointer-events","unset");
     $("#no-energy").css("display","none");
     $("#no-discs").css("display","none");
+    disSensors = 0;
+    potSensors = 0;
     estil.backgroundColor = 'green';
     botoIniciar.name("I N I C I A");
     folder1.open();
