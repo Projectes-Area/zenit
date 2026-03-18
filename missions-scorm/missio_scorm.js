@@ -2,6 +2,7 @@ const num_escenaris = 3;
 let escenari_actual = 0;
 let nota_final = 0; // variable per emmagatzemar la nota final de l'estudiant
 let notes_parcials = []; // array per emmagatzemar les notes parcials de cada escenari
+let missions_assignades = []; // array per emmagatzemar les missions assignades a l'estudiant
 
 // Mostra una finestra emergent elegant tipus alert
 function showElegantAlert(msg) {
@@ -383,7 +384,7 @@ function init() {
     } else {
         ambWebgl=false;
         renderer = new THREE.CanvasRenderer();
-        console.log("WebGL no és compatible, renderitzant amb CanvasRenderer.");
+        //console.log("WebGL no és compatible, renderitzant amb CanvasRenderer.");
         showElegantAlert("Aquest navegador no és compatible amb WebGL,<br>algunes funcionalitats del simulador no estaran disponibles.");
     }
     renderer.setPixelRatio( window.devicePixelRatio );
@@ -865,12 +866,15 @@ function addGraph() {
         $("#transferència").css("color","white");
         $("#compleció").css("color","white");
         reset();
+        disSensors = 0;
+        potSensors = 0;
+        parametres.inclinacio = 20;
         canviaParametres();
         setTimeout(fet, 100); // crida lleugerament retardada per evitar conflictes de renderitzat
         return; // Evita mostrar el missatge de temps exhaurit si ja s'ha completat
     }
     if (dies_restants <= 0) {
-        alert("S'ha exhaurit el temps disponible per completar la missió.");
+        showElegantAlert("S'ha exhaurit el temps disponible per completar la missió.");
         restaura();
     }
 }
@@ -879,7 +883,7 @@ function fet() {
     showElegantConfirm(`Enhorabona, heu completat la missió "${row_mis[nM][1]}"! (${escenari_actual + 1}/${num_escenaris})`, function(confirmed) {
         notes_parcials.push(10);
         if (window.pipwerks && pipwerks.SCORM && pipwerks.SCORM.connection.isActive) {
-            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".id", row_mis[nM][1]);
+            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".id", "Missió"); // row_mis[nM][1]
             pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".type", "numeric");
             pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".student_response", "10");
         }
@@ -1557,7 +1561,7 @@ function botoInfoMissions() {
         msgDiv +="<tr>";
         for(var c=0; c<row_mis[i].length; c++) {	  								
             var senVal=row_mis[i][c];	
-            console.log(c,senVal);
+            //console.log(c,senVal);
             if(i==0) {
                 msgDiv +="<td style='border: 1px solid #cacaca; padding:3px; text-align:center;'><b>"+senVal+"</b></td>";
             }	else {
@@ -1596,7 +1600,10 @@ function botoSelMissio() {
         botoMissio.name("Missió assignada");
         var max=row_mis.length;
         var min=1;
-        nM = min + Math.floor(Math.random() * (max - min));
+        do {
+            nM = min + Math.floor(Math.random() * (max - min));
+        } while (missions_assignades.includes(nM));
+        missions_assignades.push(nM);
         ods_mis = row_mis[nM][5];
         lat_mis = row_mis[nM][6];
         lon_mis = row_mis[nM][7];
@@ -1785,8 +1792,6 @@ function reset() {
     $(".cr.number.has-slider").css("pointer-events","unset");
     $("#no-energy").css("display","none");
     $("#no-discs").css("display","none");
-    disSensors = 0;
-    potSensors = 0;
     estil.backgroundColor = 'green';
     botoIniciar.name("I N I C I A");
     folder1.open();
@@ -1794,15 +1799,4 @@ function reset() {
     //canviaParametres();
 }
 
-function enviarDades(nota, missio) {
-    // Assegura que la connexió SCORM està activa
-    if (typeof pipwerks !== 'undefined' && pipwerks.SCORM && pipwerks.SCORM.connection.isActive) {
-        pipwerks.SCORM.set("cmi.core.score.raw", nota);
-        pipwerks.SCORM.set("cmi.core.lesson_status", "completed");
-        pipwerks.SCORM.set("cmi.comments", missio);
-        pipwerks.SCORM.save();
-    } else {
-        showElegantAlert("No s'ha pogut connectar amb el LMS SCORM. La nota no s'ha enviat.");
-    }
-}
 
