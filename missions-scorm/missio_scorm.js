@@ -868,7 +868,13 @@ function addGraph() {
         reset();
         disSensors = 0;
         potSensors = 0;
+        sensorsIniciats = false
         parametres.inclinacio = 20;
+        folder1.__controllers[2].setValue(parametres.inclinacio);
+        parametres.aOrbita = 10000;
+        folder1.__controllers[4].setValue(parametres.aOrbita);
+        parametres.velAnimacio = 1;
+        folder3.__controllers[1].setValue(parametres.velAnimacio);
         canviaParametres();
         setTimeout(fet, 100); // crida lleugerament retardada per evitar conflictes de renderitzat
         return; // Evita mostrar el missatge de temps exhaurit si ja s'ha completat
@@ -879,11 +885,25 @@ function addGraph() {
     }
 }
 
+// Funció global per normalitzar id SCORM: treure accents, ç/Ç, caràcters especials, límit 255
+function normalizeId(str) {
+    return str
+        .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // treu diacrítics
+        .replace(/ /g, '_') // espais a underscores
+        .replace(/\(/g, 'left_bracket') // ( a left_bracket
+        .replace(/\)/g, 'right_bracket') // ) a right_bracket
+        .replace(/[^A-Za-z0-9_\-']/g, '') // elimina caràcters no permesos
+        .substring(0, 255); // límit SCORM 1.2
+}
+
 function fet() {
     showElegantConfirm(`Enhorabona, heu completat la missió "${row_mis[nM][1]}"! (${escenari_actual + 1}/${num_escenaris})`, function(confirmed) {
         notes_parcials.push(10);
         if (window.pipwerks && pipwerks.SCORM && pipwerks.SCORM.connection.isActive) {
-            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".id", "Missió"); // row_mis[nM][1]
+            var asciiId = normalizeId(row_mis[nM][1]);
+            pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".id", asciiId);
             pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".type", "numeric");
             pipwerks.SCORM.set("cmi.interactions." + escenari_actual + ".student_response", "10");
         }
