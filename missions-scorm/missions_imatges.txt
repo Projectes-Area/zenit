@@ -1,0 +1,42 @@
+1. Incendi a Maui (Hawaii, EUA)  
+Nom: maui.jpg  
+https://commons.wikimedia.org/wiki/File:2023_Maui_wildfires_-_satellite_image.jpg  
+(CC BY-SA 4.0)
+
+2. Inundacions a Emilia-Romagna (Itàlia)  
+Nom: emilia_romagna.jpg  
+https://commons.wikimedia.org/wiki/File:Alluvione_Emilia-Romagna_2023_-_Copernicus_Sentinel-1.jpg  
+(CC BY 4.0)
+
+3. Terratrèmol a Turquia i Síria  
+Nom: turquia_siria.jpg  
+https://earthobservatory.nasa.gov/images/151324/earthquake-in-turkey-and-syria  
+(Public domain, NASA)
+
+4. Cicló Mocha a Myanmar i Bangladesh  
+Nom: mocha.jpg  
+https://commons.wikimedia.org/wiki/File:Cyclone_Mocha_2023-05-14_0600Z.jpg  
+(Public domain, NASA)
+
+5. Vessament de productes químics a l'Ohio (EUA)  
+Nom: ohio.jpg  
+https://commons.wikimedia.org/wiki/File:East_Palestine_train_derailment_aerial_view_2023.jpg  
+(Public domain, US EPA)
+
+6. Incendi a la Columbia Britànica (Canadà)  
+Nom: columbia_britanica.jpg  
+https://commons.wikimedia.org/wiki/File:Wildfire_in_British_Columbia_2021.jpg  
+(CC BY-SA 4.0)
+
+7. Tempesta de neu a Tòquio (Japó)  
+Nom: tokyo_neu.jpg  
+https://commons.wikimedia.org/wiki/File:Tokyo_Snow_2018-01-22.jpg  
+(CC BY-SA 4.0)
+
+8. Tempesta tropical “Helena” a Filipines  
+Nom: helena.jpg  
+https://commons.wikimedia.org/wiki/File:Typhoon_Noruin_2022-08-23_0300Z.jpg  
+(Public domain, NASA/NOAA)  
+(Pots fer servir aquesta imatge de tifó real, ja que “Helena” és fictícia.)
+
+Descarrega-les i posa-les a imatges/missions amb el nom corresponent. Si vols més opcions, avisa’m!
