@@ -1292,7 +1292,7 @@
         }					
         
         if(numCat == 0) {  // Tipus "Catalans"
-          fetch('https://celestrak.org/NORAD/elements/gp.php?CATNR=66683')  // 6GStarLab
+          fetch('https://celestrak.org/NORAD/elements/gp.php?CATNR=66683&FORMAT=tle')  // 6GStarLab
           .then(response => response.text())
           .then(response => 	{	
             var resposta = response.split('\r\n');
@@ -1300,7 +1300,7 @@
             cadenaSatelits[0] = resposta[0].trim();
             cadenaSatelits[1] = resposta[1];
             cadenaSatelits[2] = resposta[2];
-            fetch('https://celestrak.org/NORAD/elements/gp.php?CATNR=55010')  // Menut
+            fetch('https://celestrak.org/NORAD/elements/gp.php?CATNR=55010&FORMAT=tle')  // Menut
             .then(response => response.text())
             .then(response => 	{	
               var resposta = response.split('\r\n');
@@ -1324,7 +1324,7 @@
             });
           });
         } else {  // Altres tipus
-          fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP='+ urls[numCat])
+          fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP='+ urls[numCat] + '&FORMAT=tle')
           .then(response => response.text())
           .then(response => 	{	
             nomSatelit = [];
